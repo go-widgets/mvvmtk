@@ -4,7 +4,7 @@ go 1.26.4
 
 require (
 	github.com/go-widgets/mvvm v0.3.0
-	github.com/go-widgets/toolkit v0.97.0
+	github.com/go-widgets/toolkit v0.107.0
 )
 
 require (

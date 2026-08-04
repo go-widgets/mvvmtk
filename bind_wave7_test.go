@@ -1,0 +1,698 @@
+// Copyright (c) 2026 the go-widgets/mvvmtk authors. All rights reserved.
+// Use of this source code is governed by a BSD-3-Clause license that can be
+// found in the LICENSE file at the root of this repository.
+
+package mvvmtk
+
+import (
+	"testing"
+
+	"github.com/go-widgets/mvvm"
+	"github.com/go-widgets/toolkit"
+)
+
+// Wave 7 (bindability): a helper per stateful widget whose state became
+// observable this wave. Each test exercises the full two-way contract — seed
+// (the observable overrides the widget), VM→view push with an invalidate count,
+// view→VM through the widget callback, and unbind severing both edges.
+
+// ── BindField-backed scalar binders ─────────────────────────────────────────
+
+func TestBindSwitch(t *testing.T) {
+	obs := mvvm.NewObservable(false)
+	s := toolkit.NewSwitch(true)
+	c := &counter{}
+	unbind := BindSwitch(s, obs, c.inc)
+	if s.On != false {
+		t.Fatalf("seed: On=%v, want false", s.On)
+	}
+	obs.Set(true)
+	if !s.On || c.n != 1 {
+		t.Fatalf("vm→view: On=%v n=%d", s.On, c.n)
+	}
+	s.OnToggle(false)
+	if obs.Get() != false {
+		t.Fatalf("view→vm: obs=%v", obs.Get())
+	}
+	unbind()
+	obs.Set(true)
+	if s.On {
+		t.Fatal("unbind: VM→view must stop")
+	}
+}
+
+func TestBindToggle(t *testing.T) {
+	obs := mvvm.NewObservable(false)
+	tb := toolkit.NewToggleButton("b", true)
+	c := &counter{}
+	unbind := BindToggle(tb, obs, c.inc)
+	if tb.Pressed != false {
+		t.Fatalf("seed: Pressed=%v", tb.Pressed)
+	}
+	obs.Set(true)
+	if !tb.Pressed || c.n != 1 {
+		t.Fatalf("vm→view: Pressed=%v n=%d", tb.Pressed, c.n)
+	}
+	tb.OnToggle(false)
+	if obs.Get() != false {
+		t.Fatalf("view→vm: obs=%v", obs.Get())
+	}
+	unbind()
+}
+
+func TestBindRadio(t *testing.T) {
+	obs := mvvm.NewObservable(false)
+	r := toolkit.NewRadioButton("r")
+	r.Checked = true
+	c := &counter{}
+	unbind := BindRadio(r, obs, c.inc)
+	if r.Checked != false {
+		t.Fatalf("seed: Checked=%v", r.Checked)
+	}
+	obs.Set(true)
+	if !r.Checked || c.n != 1 {
+		t.Fatalf("vm→view: Checked=%v n=%d", r.Checked, c.n)
+	}
+	r.OnToggle(false)
+	if obs.Get() != false {
+		t.Fatalf("view→vm: obs=%v", obs.Get())
+	}
+	unbind()
+}
+
+func TestBindRating(t *testing.T) {
+	obs := mvvm.NewObservable(0)
+	r := toolkit.NewRating(5, 5)
+	c := &counter{}
+	unbind := BindRating(r, obs, c.inc)
+	if r.Value != 0 {
+		t.Fatalf("seed: Value=%d", r.Value)
+	}
+	obs.Set(3)
+	if r.Value != 3 || c.n != 1 {
+		t.Fatalf("vm→view: Value=%d n=%d", r.Value, c.n)
+	}
+	r.OnChange(4)
+	if obs.Get() != 4 {
+		t.Fatalf("view→vm: obs=%d", obs.Get())
+	}
+	unbind()
+}
+
+func TestBindScale(t *testing.T) {
+	obs := mvvm.NewObservable(0.0)
+	s := toolkit.NewScale(0, 10, 7)
+	c := &counter{}
+	unbind := BindScale(s, obs, c.inc)
+	if s.Value != 0 {
+		t.Fatalf("seed: Value=%v", s.Value)
+	}
+	obs.Set(2.5)
+	if s.Value != 2.5 || c.n != 1 {
+		t.Fatalf("vm→view: Value=%v n=%d", s.Value, c.n)
+	}
+	s.OnChange(4.5)
+	if obs.Get() != 4.5 {
+		t.Fatalf("view→vm: obs=%v", obs.Get())
+	}
+	unbind()
+}
+
+func TestBindExpander(t *testing.T) {
+	obs := mvvm.NewObservable(false)
+	e := toolkit.NewExpander("x", nil)
+	e.Expanded = true
+	c := &counter{}
+	unbind := BindExpander(e, obs, c.inc)
+	if e.Expanded != false {
+		t.Fatalf("seed: Expanded=%v", e.Expanded)
+	}
+	obs.Set(true)
+	if !e.Expanded || c.n != 1 {
+		t.Fatalf("vm→view: Expanded=%v n=%d", e.Expanded, c.n)
+	}
+	e.OnExpand(false)
+	if obs.Get() != false {
+		t.Fatalf("view→vm: obs=%v", obs.Get())
+	}
+	unbind()
+}
+
+func TestBindNotebook(t *testing.T) {
+	obs := mvvm.NewObservable(0)
+	n := toolkit.NewNotebook()
+	n.Active = 3
+	c := &counter{}
+	unbind := BindNotebook(n, obs, c.inc)
+	if n.Active != 0 {
+		t.Fatalf("seed: Active=%d", n.Active)
+	}
+	obs.Set(2)
+	if n.Active != 2 || c.n != 1 {
+		t.Fatalf("vm→view: Active=%d n=%d", n.Active, c.n)
+	}
+	n.OnTabChanged(1)
+	if obs.Get() != 1 {
+		t.Fatalf("view→vm: obs=%d", obs.Get())
+	}
+	unbind()
+}
+
+func TestBindComboText(t *testing.T) {
+	obs := mvvm.NewObservable("a")
+	cb := toolkit.NewComboBox([]string{"a", "b", "c"})
+	c := &counter{}
+	unbind := BindComboText(cb, obs, c.inc)
+	if cb.Text != "a" {
+		t.Fatalf("seed: Text=%q", cb.Text)
+	}
+	obs.Set("b")
+	if cb.Text != "b" || c.n != 1 {
+		t.Fatalf("vm→view: Text=%q n=%d", cb.Text, c.n)
+	}
+	cb.OnChange("c")
+	if obs.Get() != "c" {
+		t.Fatalf("view→vm: obs=%q", obs.Get())
+	}
+	unbind()
+}
+
+func TestBindPagination(t *testing.T) {
+	obs := mvvm.NewObservable(1)
+	pg := toolkit.NewPagination(5, 10)
+	c := &counter{}
+	unbind := BindPagination(pg, obs, c.inc)
+	if pg.Current != 1 {
+		t.Fatalf("seed: Current=%d", pg.Current)
+	}
+	obs.Set(4)
+	if pg.Current != 4 || c.n != 1 {
+		t.Fatalf("vm→view: Current=%d n=%d", pg.Current, c.n)
+	}
+	pg.OnChange(7)
+	if obs.Get() != 7 {
+		t.Fatalf("view→vm: obs=%d", obs.Get())
+	}
+	unbind()
+}
+
+func TestBindPagingToolbar(t *testing.T) {
+	obs := mvvm.NewObservable(1)
+	pt := toolkit.NewPagingToolbar(5, 10)
+	c := &counter{}
+	unbind := BindPagingToolbar(pt, obs, c.inc)
+	if pt.Page != 1 {
+		t.Fatalf("seed: Page=%d", pt.Page)
+	}
+	obs.Set(4)
+	if pt.Page != 4 || c.n != 1 {
+		t.Fatalf("vm→view: Page=%d n=%d", pt.Page, c.n)
+	}
+	pt.OnChange(6)
+	if obs.Get() != 6 {
+		t.Fatalf("view→vm: obs=%d", obs.Get())
+	}
+	unbind()
+}
+
+func TestBindGanttSelection(t *testing.T) {
+	obs := mvvm.NewObservable(-1)
+	g := toolkit.NewGantt(nil)
+	g.Selected = 5
+	c := &counter{}
+	unbind := BindGanttSelection(g, obs, c.inc)
+	if g.Selected != -1 {
+		t.Fatalf("seed: Selected=%d", g.Selected)
+	}
+	obs.Set(2)
+	if g.Selected != 2 || c.n != 1 {
+		t.Fatalf("vm→view: Selected=%d n=%d", g.Selected, c.n)
+	}
+	g.OnSelect(3)
+	if obs.Get() != 3 {
+		t.Fatalf("view→vm: obs=%d", obs.Get())
+	}
+	unbind()
+}
+
+func TestBindTableSelection(t *testing.T) {
+	obs := mvvm.NewObservable(-1)
+	tb := toolkit.NewTable([]toolkit.TableColumn{{Title: "A"}}, [][]string{{"r0"}, {"r1"}})
+	tb.Selected = 1
+	c := &counter{}
+	unbind := BindTableSelection(tb, obs, c.inc)
+	if tb.Selected != -1 {
+		t.Fatalf("seed: Selected=%d", tb.Selected)
+	}
+	obs.Set(1)
+	if tb.Selected != 1 || c.n != 1 {
+		t.Fatalf("vm→view: Selected=%d n=%d", tb.Selected, c.n)
+	}
+	tb.OnSelect(0)
+	if obs.Get() != 0 {
+		t.Fatalf("view→vm: obs=%d", obs.Get())
+	}
+	unbind()
+	obs.Set(1)
+	if tb.Selected != 0 {
+		t.Fatal("unbind: VM→view must stop")
+	}
+}
+
+func TestBindCarousel(t *testing.T) {
+	obs := mvvm.NewObservable(0)
+	car := toolkit.NewCarousel([]toolkit.Widget{toolkit.NewLabel("a"), toolkit.NewLabel("b"), toolkit.NewLabel("c")})
+	car.Current = 2
+	c := &counter{}
+	unbind := BindCarousel(car, obs, c.inc)
+	if car.Current != 0 {
+		t.Fatalf("seed: Current=%d", car.Current)
+	}
+	obs.Set(2)
+	if car.Current != 2 || c.n != 1 {
+		t.Fatalf("vm→view: Current=%d n=%d", car.Current, c.n)
+	}
+	car.OnChange(1)
+	if obs.Get() != 1 {
+		t.Fatalf("view→vm: obs=%d", obs.Get())
+	}
+	unbind()
+}
+
+func TestBindCycle(t *testing.T) {
+	obs := mvvm.NewObservable(0)
+	cy := toolkit.NewCycleButton("List", "Grid", "Compact")
+	cy.Index = 2
+	c := &counter{}
+	unbind := BindCycle(cy, obs, c.inc)
+	if cy.Index != 0 {
+		t.Fatalf("seed: Index=%d", cy.Index)
+	}
+	obs.Set(2)
+	if cy.Index != 2 || c.n != 1 {
+		t.Fatalf("vm→view: Index=%d n=%d", cy.Index, c.n)
+	}
+	cy.OnChangeIndex(1)
+	if obs.Get() != 1 {
+		t.Fatalf("view→vm: obs=%d", obs.Get())
+	}
+	unbind()
+}
+
+func TestBindRadioGroup(t *testing.T) {
+	obs := mvvm.NewObservable(-1)
+	g := toolkit.NewRadioGroup()
+	g.Add(toolkit.NewRadioButton("a"))
+	g.Add(toolkit.NewRadioButton("b"))
+	g.Active = 1
+	c := &counter{}
+	unbind := BindRadioGroup(g, obs, c.inc)
+	if g.Active != -1 {
+		t.Fatalf("seed: Active=%d", g.Active)
+	}
+	obs.Set(0)
+	if g.Active != 0 || c.n != 1 {
+		t.Fatalf("vm→view: Active=%d n=%d", g.Active, c.n)
+	}
+	g.OnChange(1)
+	if obs.Get() != 1 {
+		t.Fatalf("view→vm: obs=%d", obs.Get())
+	}
+	unbind()
+}
+
+func TestBindColor(t *testing.T) {
+	red := toolkit.RGBA{R: 255, A: 255}
+	blue := toolkit.RGBA{B: 255, A: 255}
+	obs := mvvm.NewObservable(red)
+	cc := toolkit.NewColorChooser(blue)
+	c := &counter{}
+	unbind := BindColor(cc, obs, c.inc)
+	if cc.Color != red {
+		t.Fatalf("seed: Color=%+v, want red", cc.Color)
+	}
+	obs.Set(blue)
+	if cc.Color != blue || c.n != 1 {
+		t.Fatalf("vm→view: Color=%+v n=%d", cc.Color, c.n)
+	}
+	cc.OnChange(red)
+	if obs.Get() != red {
+		t.Fatalf("view→vm: obs=%+v", obs.Get())
+	}
+	unbind()
+}
+
+// ── Custom / accessor / multi-value binders ─────────────────────────────────
+// These cover both the prior-callback-composed path (prev != nil, invalidate
+// != nil) and the bare path (prev == nil, invalidate == nil).
+
+func TestBindAccordion(t *testing.T) {
+	obs := mvvm.NewObservable(-1)
+	a := toolkit.NewAccordion([]toolkit.AccordionSection{{Title: "One"}, {Title: "Two"}})
+	a.Expanded = 1
+	prior := 0
+	a.OnToggle = func(int, bool) { prior++ }
+	c := &counter{}
+	unbind := BindAccordion(a, obs, c.inc)
+	if a.Expanded != -1 {
+		t.Fatalf("seed: Expanded=%d", a.Expanded)
+	}
+	obs.Set(0)
+	if a.Expanded != 0 || c.n != 1 {
+		t.Fatalf("vm→view: Expanded=%d n=%d", a.Expanded, c.n)
+	}
+	// A real toggle sets Expanded then fires OnToggle; the binder publishes the
+	// resulting index and the prior handler still runs.
+	a.Expanded = 1
+	a.OnToggle(1, true)
+	if obs.Get() != 1 || prior != 1 {
+		t.Fatalf("view→vm: obs=%d prior=%d", obs.Get(), prior)
+	}
+	unbind()
+	obs.Set(0)
+	if a.Expanded != 1 {
+		t.Fatal("unbind: VM→view must stop")
+	}
+	a.Expanded = 0
+	a.OnToggle(0, false) // only prior remains
+	if obs.Get() != 0 || prior != 2 {
+		t.Fatalf("unbind: view→vm must stop, obs=%d prior=%d", obs.Get(), prior)
+	}
+
+	// Bare path: no prior callback, nil invalidate — must not panic.
+	obs2 := mvvm.NewObservable(-1)
+	a2 := toolkit.NewAccordion([]toolkit.AccordionSection{{Title: "X"}})
+	u2 := BindAccordion(a2, obs2, nil)
+	obs2.Set(0) // invalidate == nil branch
+	a2.Expanded = 0
+	a2.OnToggle(0, true) // prev == nil branch
+	if obs2.Get() != 0 {
+		t.Fatalf("bare: obs=%d", obs2.Get())
+	}
+	u2()
+}
+
+func TestBindRange(t *testing.T) {
+	obs := mvvm.NewObservableEq([2]float64{0, 1}, func(a, b [2]float64) bool { return a == b })
+	rs := toolkit.NewRangeSlider(0, 100, 10, 90)
+	prior := 0
+	rs.OnChange = func(float64, float64) { prior++ }
+	c := &counter{}
+	unbind := BindRange(rs, obs, c.inc)
+	if rs.Low != 0 || rs.High != 1 {
+		t.Fatalf("seed: Low=%v High=%v", rs.Low, rs.High)
+	}
+	obs.Set([2]float64{20, 80})
+	if rs.Low != 20 || rs.High != 80 || c.n != 1 {
+		t.Fatalf("vm→view: Low=%v High=%v n=%d", rs.Low, rs.High, c.n)
+	}
+	rs.OnChange(30, 70)
+	if obs.Get() != ([2]float64{30, 70}) || prior != 1 {
+		t.Fatalf("view→vm: obs=%v prior=%d", obs.Get(), prior)
+	}
+	unbind()
+	obs.Set([2]float64{1, 2})
+	if rs.Low != 30 || rs.High != 70 {
+		t.Fatal("unbind: VM→view must stop")
+	}
+
+	// Bare path.
+	obs2 := mvvm.NewObservableEq([2]float64{0, 0}, func(a, b [2]float64) bool { return a == b })
+	rs2 := toolkit.NewRangeSlider(0, 100, 0, 0)
+	u2 := BindRange(rs2, obs2, nil)
+	obs2.Set([2]float64{5, 6})
+	rs2.OnChange(7, 8)
+	if obs2.Get() != ([2]float64{7, 8}) {
+		t.Fatalf("bare: obs=%v", obs2.Get())
+	}
+	u2()
+}
+
+func TestBindColorPicker(t *testing.T) {
+	red := toolkit.RGBA{R: 255, A: 255}
+	blue := toolkit.RGBA{B: 255, A: 255}
+	green := toolkit.RGBA{G: 255, A: 255}
+	obs := mvvm.NewObservable(red)
+	cp := toolkit.NewColorPicker(blue)
+	prior := 0
+	cp.OnChange = func(toolkit.RGBA) { prior++ }
+	c := &counter{}
+	unbind := BindColorPicker(cp, obs, c.inc)
+	if cp.Color() != red {
+		t.Fatalf("seed: Color=%+v", cp.Color())
+	}
+	obs.Set(green)
+	if cp.Color() != green || c.n != 1 {
+		t.Fatalf("vm→view: Color=%+v n=%d", cp.Color(), c.n)
+	}
+	cp.OnChange(blue)
+	if obs.Get() != blue || prior != 1 {
+		t.Fatalf("view→vm: obs=%+v prior=%d", obs.Get(), prior)
+	}
+	unbind()
+	obs.Set(red)
+	if cp.Color() != blue {
+		t.Fatal("unbind: VM→view must stop")
+	}
+
+	// Bare path.
+	obs2 := mvvm.NewObservable(red)
+	cp2 := toolkit.NewColorPicker(blue)
+	u2 := BindColorPicker(cp2, obs2, nil)
+	obs2.Set(green)
+	cp2.OnChange(red)
+	if obs2.Get() != red {
+		t.Fatalf("bare: obs=%+v", obs2.Get())
+	}
+	u2()
+}
+
+func TestBindDate(t *testing.T) {
+	obs := mvvm.NewObservable(Date{2021, 6, 15})
+	cal := toolkit.NewCalendar(2000, 1, 1)
+	prior := 0
+	cal.OnSelect = func(int, int, int) { prior++ }
+	c := &counter{}
+	unbind := BindDate(cal, obs, c.inc)
+	if cal.Year != 2021 || cal.Month != 6 || cal.Day != 15 {
+		t.Fatalf("seed: %d-%d-%d", cal.Year, cal.Month, cal.Day)
+	}
+	obs.Set(Date{2022, 3, 4})
+	if cal.Year != 2022 || cal.Month != 3 || cal.Day != 4 || c.n != 1 {
+		t.Fatalf("vm→view: %d-%d-%d n=%d", cal.Year, cal.Month, cal.Day, c.n)
+	}
+	cal.OnSelect(2023, 12, 25)
+	if obs.Get() != (Date{2023, 12, 25}) || prior != 1 {
+		t.Fatalf("view→vm: obs=%+v prior=%d", obs.Get(), prior)
+	}
+	unbind()
+
+	// Bare path.
+	obs2 := mvvm.NewObservable(Date{2010, 5, 5})
+	cal2 := toolkit.NewCalendar(2000, 1, 1)
+	u2 := BindDate(cal2, obs2, nil)
+	obs2.Set(Date{2011, 6, 6})
+	cal2.OnSelect(2012, 7, 7)
+	if obs2.Get() != (Date{2012, 7, 7}) {
+		t.Fatalf("bare: obs=%+v", obs2.Get())
+	}
+	u2()
+}
+
+func TestBindDatePicker(t *testing.T) {
+	obs := mvvm.NewObservable(Date{2021, 6, 15})
+	dp := toolkit.NewDatePicker(2000, 1, 1)
+	prior := 0
+	dp.OnChange = func(int, int, int) { prior++ }
+	c := &counter{}
+	unbind := BindDatePicker(dp, obs, c.inc)
+	if y, m, d := dp.Date(); y != 2021 || m != 6 || d != 15 {
+		t.Fatalf("seed: %d-%d-%d", y, m, d)
+	}
+	obs.Set(Date{2022, 3, 4})
+	if y, m, d := dp.Date(); y != 2022 || m != 3 || d != 4 || c.n != 1 {
+		t.Fatalf("vm→view: %d-%d-%d n=%d", y, m, d, c.n)
+	}
+	dp.OnChange(2023, 12, 25)
+	if obs.Get() != (Date{2023, 12, 25}) || prior != 1 {
+		t.Fatalf("view→vm: obs=%+v prior=%d", obs.Get(), prior)
+	}
+	unbind()
+
+	// Bare path.
+	obs2 := mvvm.NewObservable(Date{2010, 5, 5})
+	dp2 := toolkit.NewDatePicker(2000, 1, 1)
+	u2 := BindDatePicker(dp2, obs2, nil)
+	obs2.Set(Date{2011, 6, 6})
+	dp2.OnChange(2012, 7, 7)
+	if obs2.Get() != (Date{2012, 7, 7}) {
+		t.Fatalf("bare: obs=%+v", obs2.Get())
+	}
+	u2()
+}
+
+func TestBindTime(t *testing.T) {
+	obs := mvvm.NewObservable(TimeOfDay{9, 30})
+	tp := toolkit.NewTimePicker(0, 0)
+	prior := 0
+	tp.OnChange = func(int, int) { prior++ }
+	c := &counter{}
+	unbind := BindTime(tp, obs, c.inc)
+	if tp.Hour != 9 || tp.Minute != 30 {
+		t.Fatalf("seed: %d:%d", tp.Hour, tp.Minute)
+	}
+	obs.Set(TimeOfDay{14, 45})
+	if tp.Hour != 14 || tp.Minute != 45 || c.n != 1 {
+		t.Fatalf("vm→view: %d:%d n=%d", tp.Hour, tp.Minute, c.n)
+	}
+	tp.OnChange(6, 15)
+	if obs.Get() != (TimeOfDay{6, 15}) || prior != 1 {
+		t.Fatalf("view→vm: obs=%+v prior=%d", obs.Get(), prior)
+	}
+	unbind()
+
+	// Bare path.
+	obs2 := mvvm.NewObservable(TimeOfDay{1, 1})
+	tp2 := toolkit.NewTimePicker(0, 0)
+	u2 := BindTime(tp2, obs2, nil)
+	obs2.Set(TimeOfDay{2, 2})
+	tp2.OnChange(3, 3)
+	if obs2.Get() != (TimeOfDay{3, 3}) {
+		t.Fatalf("bare: obs=%+v", obs2.Get())
+	}
+	u2()
+}
+
+func TestBindTextView(t *testing.T) {
+	obs := mvvm.NewObservable("hello")
+	tv := toolkit.NewTextView("stale")
+	prior := 0
+	tv.OnChange = func() { prior++ }
+	c := &counter{}
+	unbind := BindTextView(tv, obs, c.inc)
+	if tv.Text() != "hello" {
+		t.Fatalf("seed: Text=%q", tv.Text())
+	}
+	obs.Set("world")
+	if tv.Text() != "world" || c.n != 1 {
+		t.Fatalf("vm→view: Text=%q n=%d", tv.Text(), c.n)
+	}
+	// A view edit sets the buffer then fires the value-less OnChange; the binder
+	// reads Text() back into the observable.
+	tv.SetText("typed")
+	tv.OnChange()
+	if obs.Get() != "typed" || prior != 1 {
+		t.Fatalf("view→vm: obs=%q prior=%d", obs.Get(), prior)
+	}
+	unbind()
+	obs.Set("after")
+	if tv.Text() != "typed" {
+		t.Fatal("unbind: VM→view must stop")
+	}
+
+	// Bare path.
+	obs2 := mvvm.NewObservable("a")
+	tv2 := toolkit.NewTextView("")
+	u2 := BindTextView(tv2, obs2, nil)
+	obs2.Set("b")
+	tv2.SetText("c")
+	tv2.OnChange()
+	if obs2.Get() != "c" {
+		t.Fatalf("bare: obs=%q", obs2.Get())
+	}
+	u2()
+}
+
+func TestBindAgendaRename(t *testing.T) {
+	list := mvvm.NewObservableList("Work", "Home")
+	sb := toolkit.NewAgendaSidebar([]toolkit.AgendaCalendar{
+		{Name: "old0"}, {Name: "old1"},
+	})
+	prior := 0
+	sb.OnRename = func(int, string) { prior++ }
+	c := &counter{}
+	unbind := BindAgendaRename(sb, list, c.inc)
+	// Seed: names come from the list (source of truth).
+	if sb.Calendars[0].Name != "Work" || sb.Calendars[1].Name != "Home" {
+		t.Fatalf("seed: %q,%q", sb.Calendars[0].Name, sb.Calendars[1].Name)
+	}
+	if c.n != 1 {
+		t.Fatalf("seed apply should invalidate once: n=%d", c.n)
+	}
+	// VM→view: a list change rewrites the matching calendar name.
+	list.Set(1, "Family")
+	if sb.Calendars[1].Name != "Family" {
+		t.Fatalf("vm→view: name1=%q", sb.Calendars[1].Name)
+	}
+	// view→VM: an inline rename pushes into the list, prior handler runs.
+	sb.OnRename(0, "Personal")
+	if list.At(0) != "Personal" || prior != 1 {
+		t.Fatalf("view→vm: list0=%q prior=%d", list.At(0), prior)
+	}
+	unbind()
+	list.Set(0, "Ignored")
+	if sb.Calendars[0].Name == "Ignored" {
+		t.Fatal("unbind: VM→view must stop")
+	}
+
+	// Bare path + length-mismatch guard: fewer calendars than list entries, nil
+	// invalidate, out-of-range rename index is a no-op.
+	longList := mvvm.NewObservableList("a", "b", "c")
+	sb2 := toolkit.NewAgendaSidebar([]toolkit.AgendaCalendar{{Name: "z"}})
+	u2 := BindAgendaRename(sb2, longList, nil)
+	if sb2.Calendars[0].Name != "a" {
+		t.Fatalf("bare seed: %q", sb2.Calendars[0].Name)
+	}
+	sb2.OnRename(9, "oob") // index past the list -> ignored, no panic
+	sb2.OnRename(0, "A")
+	if longList.At(0) != "A" {
+		t.Fatalf("bare view→vm: %q", longList.At(0))
+	}
+	u2()
+}
+
+func TestBindMenuChecks(t *testing.T) {
+	list := mvvm.NewObservableList(true, false)
+	noop := func() {}
+	m := &toolkit.Menu{Items: []toolkit.MenuItem{
+		{Label: "A", Checkable: true, Action: noop},
+		{Label: "B", Checkable: true, Action: noop},
+	}}
+	prior := 0
+	m.OnItemToggle = func(int, bool) { prior++ }
+	c := &counter{}
+	unbind := BindMenuChecks(m, list, c.inc)
+	if !m.Items[0].Checked || m.Items[1].Checked {
+		t.Fatalf("seed: %v,%v", m.Items[0].Checked, m.Items[1].Checked)
+	}
+	if c.n != 1 {
+		t.Fatalf("seed apply should invalidate once: n=%d", c.n)
+	}
+	list.Set(1, true)
+	if !m.Items[1].Checked {
+		t.Fatalf("vm→view: item1=%v", m.Items[1].Checked)
+	}
+	m.OnItemToggle(0, false)
+	if list.At(0) != false || prior != 1 {
+		t.Fatalf("view→vm: list0=%v prior=%d", list.At(0), prior)
+	}
+	unbind()
+	list.Set(0, true)
+	if m.Items[0].Checked {
+		t.Fatal("unbind: VM→view must stop")
+	}
+
+	// Bare path + length-mismatch + out-of-range index.
+	longList := mvvm.NewObservableList(true, true, true)
+	m2 := &toolkit.Menu{Items: []toolkit.MenuItem{{Label: "X", Checkable: true, Action: noop}}}
+	u2 := BindMenuChecks(m2, longList, nil)
+	if !m2.Items[0].Checked {
+		t.Fatalf("bare seed: %v", m2.Items[0].Checked)
+	}
+	m2.OnItemToggle(9, false) // out of range -> ignored
+	m2.OnItemToggle(0, false)
+	if longList.At(0) != false {
+		t.Fatalf("bare view→vm: %v", longList.At(0))
+	}
+	u2()
+}
