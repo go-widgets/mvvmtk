@@ -63,17 +63,17 @@ func TestBindToggle(t *testing.T) {
 func TestBindRadio(t *testing.T) {
 	obs := mvvm.NewObservable(false)
 	r := toolkit.NewRadioButton("r")
-	r.Checked = true
+	r.Checked().Set(true)
 	c := &counter{}
 	unbind := BindRadio(r, obs, c.inc)
-	if r.Checked != false {
-		t.Fatalf("seed: Checked=%v", r.Checked)
+	if r.Checked().Get() != false {
+		t.Fatalf("seed: Checked=%v", r.Checked().Get())
 	}
 	obs.Set(true)
-	if !r.Checked || c.n != 1 {
-		t.Fatalf("vm→view: Checked=%v n=%d", r.Checked, c.n)
+	if !r.Checked().Get() || c.n != 1 {
+		t.Fatalf("vm→view: Checked=%v n=%d", r.Checked().Get(), c.n)
 	}
-	r.OnToggle(false)
+	r.Checked().Set(false)
 	if obs.Get() != false {
 		t.Fatalf("view→vm: obs=%v", obs.Get())
 	}
@@ -163,14 +163,14 @@ func TestBindComboText(t *testing.T) {
 	cb := toolkit.NewComboBox([]string{"a", "b", "c"})
 	c := &counter{}
 	unbind := BindComboText(cb, obs, c.inc)
-	if cb.Text != "a" {
-		t.Fatalf("seed: Text=%q", cb.Text)
+	if cb.Text().Get() != "a" {
+		t.Fatalf("seed: Text=%q", cb.Text().Get())
 	}
 	obs.Set("b")
-	if cb.Text != "b" || c.n != 1 {
-		t.Fatalf("vm→view: Text=%q n=%d", cb.Text, c.n)
+	if cb.Text().Get() != "b" || c.n != 1 {
+		t.Fatalf("vm→view: Text=%q n=%d", cb.Text().Get(), c.n)
 	}
-	cb.OnChange("c")
+	cb.Text().Set("c")
 	if obs.Get() != "c" {
 		t.Fatalf("view→vm: obs=%q", obs.Get())
 	}
@@ -201,14 +201,14 @@ func TestBindPagingToolbar(t *testing.T) {
 	pt := toolkit.NewPagingToolbar(5, 10)
 	c := &counter{}
 	unbind := BindPagingToolbar(pt, obs, c.inc)
-	if pt.Page != 1 {
-		t.Fatalf("seed: Page=%d", pt.Page)
+	if pt.Page().Get() != 1 {
+		t.Fatalf("seed: Page=%d", pt.Page().Get())
 	}
 	obs.Set(4)
-	if pt.Page != 4 || c.n != 1 {
-		t.Fatalf("vm→view: Page=%d n=%d", pt.Page, c.n)
+	if pt.Page().Get() != 4 || c.n != 1 {
+		t.Fatalf("vm→view: Page=%d n=%d", pt.Page().Get(), c.n)
 	}
-	pt.OnChange(6)
+	pt.Page().Set(6)
 	if obs.Get() != 6 {
 		t.Fatalf("view→vm: obs=%d", obs.Get())
 	}
@@ -218,17 +218,17 @@ func TestBindPagingToolbar(t *testing.T) {
 func TestBindGanttSelection(t *testing.T) {
 	obs := mvvm.NewObservable(-1)
 	g := toolkit.NewGantt(nil)
-	g.Selected = 5
+	g.Selected().Set(5)
 	c := &counter{}
 	unbind := BindGanttSelection(g, obs, c.inc)
-	if g.Selected != -1 {
-		t.Fatalf("seed: Selected=%d", g.Selected)
+	if g.Selected().Get() != -1 {
+		t.Fatalf("seed: Selected=%d", g.Selected().Get())
 	}
 	obs.Set(2)
-	if g.Selected != 2 || c.n != 1 {
-		t.Fatalf("vm→view: Selected=%d n=%d", g.Selected, c.n)
+	if g.Selected().Get() != 2 || c.n != 1 {
+		t.Fatalf("vm→view: Selected=%d n=%d", g.Selected().Get(), c.n)
 	}
-	g.OnSelect(3)
+	g.Selected().Set(3)
 	if obs.Get() != 3 {
 		t.Fatalf("view→vm: obs=%d", obs.Get())
 	}
@@ -262,17 +262,17 @@ func TestBindTableSelection(t *testing.T) {
 func TestBindCarousel(t *testing.T) {
 	obs := mvvm.NewObservable(0)
 	car := toolkit.NewCarousel([]toolkit.Widget{toolkit.NewLabel("a"), toolkit.NewLabel("b"), toolkit.NewLabel("c")})
-	car.Current = 2
+	car.Current().Set(2)
 	c := &counter{}
 	unbind := BindCarousel(car, obs, c.inc)
-	if car.Current != 0 {
-		t.Fatalf("seed: Current=%d", car.Current)
+	if car.Current().Get() != 0 {
+		t.Fatalf("seed: Current=%d", car.Current().Get())
 	}
 	obs.Set(2)
-	if car.Current != 2 || c.n != 1 {
-		t.Fatalf("vm→view: Current=%d n=%d", car.Current, c.n)
+	if car.Current().Get() != 2 || c.n != 1 {
+		t.Fatalf("vm→view: Current=%d n=%d", car.Current().Get(), c.n)
 	}
-	car.OnChange(1)
+	car.Current().Set(1)
 	if obs.Get() != 1 {
 		t.Fatalf("view→vm: obs=%d", obs.Get())
 	}
@@ -304,17 +304,17 @@ func TestBindRadioGroup(t *testing.T) {
 	g := toolkit.NewRadioGroup()
 	g.Add(toolkit.NewRadioButton("a"))
 	g.Add(toolkit.NewRadioButton("b"))
-	g.Active = 1
+	g.Active().Set(1)
 	c := &counter{}
 	unbind := BindRadioGroup(g, obs, c.inc)
-	if g.Active != -1 {
-		t.Fatalf("seed: Active=%d", g.Active)
+	if g.Active().Get() != -1 {
+		t.Fatalf("seed: Active=%d", g.Active().Get())
 	}
 	obs.Set(0)
-	if g.Active != 0 || c.n != 1 {
-		t.Fatalf("vm→view: Active=%d n=%d", g.Active, c.n)
+	if g.Active().Get() != 0 || c.n != 1 {
+		t.Fatalf("vm→view: Active=%d n=%d", g.Active().Get(), c.n)
 	}
-	g.OnChange(1)
+	g.Active().Set(1)
 	if obs.Get() != 1 {
 		t.Fatalf("view→vm: obs=%d", obs.Get())
 	}
@@ -392,25 +392,29 @@ func TestBindAccordion(t *testing.T) {
 func TestBindRange(t *testing.T) {
 	obs := mvvm.NewObservableEq([2]float64{0, 1}, func(a, b [2]float64) bool { return a == b })
 	rs := toolkit.NewRangeSlider(0, 100, 10, 90)
-	prior := 0
-	rs.OnChange = func(float64, float64) { prior++ }
 	c := &counter{}
 	unbind := BindRange(rs, obs, c.inc)
-	if rs.Low != 0 || rs.High != 1 {
-		t.Fatalf("seed: Low=%v High=%v", rs.Low, rs.High)
+	if rs.Low().Get() != 0 || rs.High().Get() != 1 {
+		t.Fatalf("seed: Low=%v High=%v", rs.Low().Get(), rs.High().Get())
 	}
 	obs.Set([2]float64{20, 80})
-	if rs.Low != 20 || rs.High != 80 || c.n != 1 {
-		t.Fatalf("vm→view: Low=%v High=%v n=%d", rs.Low, rs.High, c.n)
+	if rs.Low().Get() != 20 || rs.High().Get() != 80 || c.n != 1 {
+		t.Fatalf("vm→view: Low=%v High=%v n=%d", rs.Low().Get(), rs.High().Get(), c.n)
 	}
-	rs.OnChange(30, 70)
-	if obs.Get() != ([2]float64{30, 70}) || prior != 1 {
-		t.Fatalf("view→vm: obs=%v prior=%d", obs.Get(), prior)
+	// A handle move (either Observable) publishes the current pair to the VM.
+	rs.Low().Set(30)
+	rs.High().Set(70)
+	if obs.Get() != ([2]float64{30, 70}) {
+		t.Fatalf("view→vm: obs=%v", obs.Get())
 	}
 	unbind()
 	obs.Set([2]float64{1, 2})
-	if rs.Low != 30 || rs.High != 70 {
+	if rs.Low().Get() != 30 || rs.High().Get() != 70 {
 		t.Fatal("unbind: VM→view must stop")
+	}
+	rs.Low().Set(9)
+	if obs.Get() != ([2]float64{1, 2}) {
+		t.Fatal("unbind: view→vm must stop")
 	}
 
 	// Bare path.
@@ -418,8 +422,11 @@ func TestBindRange(t *testing.T) {
 	rs2 := toolkit.NewRangeSlider(0, 100, 0, 0)
 	u2 := BindRange(rs2, obs2, nil)
 	obs2.Set([2]float64{5, 6})
-	rs2.OnChange(7, 8)
-	if obs2.Get() != ([2]float64{7, 8}) {
+	if rs2.Low().Get() != 5 || rs2.High().Get() != 6 {
+		t.Fatalf("bare vm→view: Low=%v High=%v", rs2.Low().Get(), rs2.High().Get())
+	}
+	rs2.Low().Set(7) // publishes [7, High=6]
+	if obs2.Get() != ([2]float64{7, 6}) {
 		t.Fatalf("bare: obs=%v", obs2.Get())
 	}
 	u2()

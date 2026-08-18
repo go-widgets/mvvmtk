@@ -141,14 +141,14 @@ func TestBindListSelection(t *testing.T) {
 	unbind := BindListSelection(lb, obs, c.inc)
 	defer unbind()
 
-	if lb.Selected != 0 {
-		t.Fatalf("seed: Selected=%d", lb.Selected)
+	if lb.Selected().Get() != 0 {
+		t.Fatalf("seed: Selected=%d", lb.Selected().Get())
 	}
 	obs.Set(2)
-	if lb.Selected != 2 || c.n != 1 {
-		t.Fatalf("vm→view: Selected=%d n=%d", lb.Selected, c.n)
+	if lb.Selected().Get() != 2 || c.n != 1 {
+		t.Fatalf("vm→view: Selected=%d n=%d", lb.Selected().Get(), c.n)
 	}
-	lb.OnActivate(1)
+	lb.Selected().Set(1)
 	if obs.Get() != 1 {
 		t.Fatalf("view→vm: obs=%d", obs.Get())
 	}
