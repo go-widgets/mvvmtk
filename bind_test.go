@@ -78,14 +78,14 @@ func TestBindChecked(t *testing.T) {
 	unbind := BindChecked(cb, obs, c.inc)
 	defer unbind()
 
-	if cb.Checked != false {
-		t.Fatalf("seed should override widget: Checked=%v", cb.Checked)
+	if cb.Checked().Get() != false {
+		t.Fatalf("seed should override widget: Checked=%v", cb.Checked().Get())
 	}
 	obs.Set(true)
-	if !cb.Checked || c.n != 1 {
-		t.Fatalf("vm→view: Checked=%v n=%d", cb.Checked, c.n)
+	if !cb.Checked().Get() || c.n != 1 {
+		t.Fatalf("vm→view: Checked=%v n=%d", cb.Checked().Get(), c.n)
 	}
-	cb.OnToggle(false)
+	cb.Checked().Set(false)
 	if obs.Get() != false {
 		t.Fatalf("view→vm: obs=%v", obs.Get())
 	}
@@ -99,14 +99,14 @@ func TestBindSelectedIndex(t *testing.T) {
 	unbind := BindSelectedIndex(d, obs, c.inc)
 	defer unbind()
 
-	if d.Selected != 1 {
-		t.Fatalf("seed: Selected=%d", d.Selected)
+	if d.Selected().Get() != 1 {
+		t.Fatalf("seed: Selected=%d", d.Selected().Get())
 	}
 	obs.Set(2)
-	if d.Selected != 2 || c.n != 1 {
-		t.Fatalf("vm→view: Selected=%d n=%d", d.Selected, c.n)
+	if d.Selected().Get() != 2 || c.n != 1 {
+		t.Fatalf("vm→view: Selected=%d n=%d", d.Selected().Get(), c.n)
 	}
-	d.OnSelect(0)
+	d.Selected().Set(0)
 	if obs.Get() != 0 {
 		t.Fatalf("view→vm: obs=%d", obs.Get())
 	}
@@ -120,14 +120,14 @@ func TestBindSpin(t *testing.T) {
 	unbind := BindSpin(s, obs, c.inc)
 	defer unbind()
 
-	if s.Value != 5 {
-		t.Fatalf("seed: Value=%d", s.Value)
+	if s.Value().Get() != 5 {
+		t.Fatalf("seed: Value=%d", s.Value().Get())
 	}
 	obs.Set(7)
-	if s.Value != 7 || c.n != 1 {
-		t.Fatalf("vm→view: Value=%d n=%d", s.Value, c.n)
+	if s.Value().Get() != 7 || c.n != 1 {
+		t.Fatalf("vm→view: Value=%d n=%d", s.Value().Get(), c.n)
 	}
-	s.OnChange(3)
+	s.Value().Set(3)
 	if obs.Get() != 3 {
 		t.Fatalf("view→vm: obs=%d", obs.Get())
 	}
@@ -162,14 +162,14 @@ func TestBindViewSwitcher(t *testing.T) {
 	unbind := BindViewSwitcher(v, obs, c.inc)
 	defer unbind()
 
-	if v.Current != 1 {
-		t.Fatalf("seed: Current=%d", v.Current)
+	if v.Current().Get() != 1 {
+		t.Fatalf("seed: Current=%d", v.Current().Get())
 	}
 	obs.Set(0)
-	if v.Current != 0 || c.n != 1 {
-		t.Fatalf("vm→view: Current=%d n=%d", v.Current, c.n)
+	if v.Current().Get() != 0 || c.n != 1 {
+		t.Fatalf("vm→view: Current=%d n=%d", v.Current().Get(), c.n)
 	}
-	v.OnChange(1)
+	v.Current().Set(1)
 	if obs.Get() != 1 {
 		t.Fatalf("view→vm: obs=%d", obs.Get())
 	}
