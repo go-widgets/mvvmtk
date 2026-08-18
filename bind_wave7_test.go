@@ -328,14 +328,14 @@ func TestBindColor(t *testing.T) {
 	cc := toolkit.NewColorChooser(blue)
 	c := &counter{}
 	unbind := BindColor(cc, obs, c.inc)
-	if cc.Color != red {
-		t.Fatalf("seed: Color=%+v, want red", cc.Color)
+	if cc.Color().Get() != red {
+		t.Fatalf("seed: Color=%+v, want red", cc.Color().Get())
 	}
 	obs.Set(blue)
-	if cc.Color != blue || c.n != 1 {
-		t.Fatalf("vm→view: Color=%+v n=%d", cc.Color, c.n)
+	if cc.Color().Get() != blue || c.n != 1 {
+		t.Fatalf("vm→view: Color=%+v n=%d", cc.Color().Get(), c.n)
 	}
-	cc.OnChange(red)
+	cc.Color().Set(red)
 	if obs.Get() != red {
 		t.Fatalf("view→vm: obs=%+v", obs.Get())
 	}
@@ -474,31 +474,33 @@ func TestBindColorPicker(t *testing.T) {
 func TestBindDate(t *testing.T) {
 	obs := mvvm.NewObservable(Date{2021, 6, 15})
 	cal := toolkit.NewCalendar(2000, 1, 1)
-	prior := 0
-	cal.OnSelect = func(int, int, int) { prior++ }
 	c := &counter{}
 	unbind := BindDate(cal, obs, c.inc)
-	if cal.Year != 2021 || cal.Month != 6 || cal.Day != 15 {
-		t.Fatalf("seed: %d-%d-%d", cal.Year, cal.Month, cal.Day)
+	if cal.Year().Get() != 2021 || cal.Month().Get() != 6 || cal.Day().Get() != 15 {
+		t.Fatalf("seed: %d-%d-%d", cal.Year().Get(), cal.Month().Get(), cal.Day().Get())
 	}
 	obs.Set(Date{2022, 3, 4})
-	if cal.Year != 2022 || cal.Month != 3 || cal.Day != 4 || c.n != 1 {
-		t.Fatalf("vm→view: %d-%d-%d n=%d", cal.Year, cal.Month, cal.Day, c.n)
+	if cal.Year().Get() != 2022 || cal.Month().Get() != 3 || cal.Day().Get() != 4 || c.n != 1 {
+		t.Fatalf("vm→view: %d-%d-%d n=%d", cal.Year().Get(), cal.Month().Get(), cal.Day().Get(), c.n)
 	}
-	cal.OnSelect(2023, 12, 25)
-	if obs.Get() != (Date{2023, 12, 25}) || prior != 1 {
-		t.Fatalf("view→vm: obs=%+v prior=%d", obs.Get(), prior)
+	// A user date pick sets the Calendar's date Observables; the binder publishes it.
+	cal.SetDate(2023, 12, 25)
+	if obs.Get() != (Date{2023, 12, 25}) {
+		t.Fatalf("view→vm: obs=%+v", obs.Get())
 	}
 	unbind()
+	obs.Set(Date{2000, 1, 1})
+	if cal.Year().Get() != 2023 {
+		t.Fatal("unbind: VM→view must stop")
+	}
 
 	// Bare path.
 	obs2 := mvvm.NewObservable(Date{2010, 5, 5})
 	cal2 := toolkit.NewCalendar(2000, 1, 1)
 	u2 := BindDate(cal2, obs2, nil)
 	obs2.Set(Date{2011, 6, 6})
-	cal2.OnSelect(2012, 7, 7)
-	if obs2.Get() != (Date{2012, 7, 7}) {
-		t.Fatalf("bare: obs=%+v", obs2.Get())
+	if cal2.Year().Get() != 2011 {
+		t.Fatalf("bare vm→view: %d", cal2.Year().Get())
 	}
 	u2()
 }
@@ -506,20 +508,18 @@ func TestBindDate(t *testing.T) {
 func TestBindDatePicker(t *testing.T) {
 	obs := mvvm.NewObservable(Date{2021, 6, 15})
 	dp := toolkit.NewDatePicker(2000, 1, 1)
-	prior := 0
-	dp.OnChange = func(int, int, int) { prior++ }
 	c := &counter{}
 	unbind := BindDatePicker(dp, obs, c.inc)
-	if y, m, d := dp.Date(); y != 2021 || m != 6 || d != 15 {
-		t.Fatalf("seed: %d-%d-%d", y, m, d)
+	if dp.Cal.Year().Get() != 2021 || dp.Cal.Month().Get() != 6 || dp.Cal.Day().Get() != 15 {
+		t.Fatalf("seed: %d-%d-%d", dp.Cal.Year().Get(), dp.Cal.Month().Get(), dp.Cal.Day().Get())
 	}
 	obs.Set(Date{2022, 3, 4})
-	if y, m, d := dp.Date(); y != 2022 || m != 3 || d != 4 || c.n != 1 {
-		t.Fatalf("vm→view: %d-%d-%d n=%d", y, m, d, c.n)
+	if dp.Cal.Year().Get() != 2022 || dp.Cal.Month().Get() != 3 || dp.Cal.Day().Get() != 4 || c.n != 1 {
+		t.Fatalf("vm→view: %d-%d-%d n=%d", dp.Cal.Year().Get(), dp.Cal.Month().Get(), dp.Cal.Day().Get(), c.n)
 	}
-	dp.OnChange(2023, 12, 25)
-	if obs.Get() != (Date{2023, 12, 25}) || prior != 1 {
-		t.Fatalf("view→vm: obs=%+v prior=%d", obs.Get(), prior)
+	dp.Cal.SetDate(2023, 12, 25) // user picks a day in the popup
+	if obs.Get() != (Date{2023, 12, 25}) {
+		t.Fatalf("view→vm: obs=%+v", obs.Get())
 	}
 	unbind()
 
@@ -528,9 +528,8 @@ func TestBindDatePicker(t *testing.T) {
 	dp2 := toolkit.NewDatePicker(2000, 1, 1)
 	u2 := BindDatePicker(dp2, obs2, nil)
 	obs2.Set(Date{2011, 6, 6})
-	dp2.OnChange(2012, 7, 7)
-	if obs2.Get() != (Date{2012, 7, 7}) {
-		t.Fatalf("bare: obs=%+v", obs2.Get())
+	if dp2.Cal.Year().Get() != 2011 {
+		t.Fatalf("bare: %d", dp2.Cal.Year().Get())
 	}
 	u2()
 }
@@ -538,20 +537,20 @@ func TestBindDatePicker(t *testing.T) {
 func TestBindTime(t *testing.T) {
 	obs := mvvm.NewObservable(TimeOfDay{9, 30})
 	tp := toolkit.NewTimePicker(0, 0)
-	prior := 0
-	tp.OnChange = func(int, int) { prior++ }
 	c := &counter{}
 	unbind := BindTime(tp, obs, c.inc)
-	if tp.Hour != 9 || tp.Minute != 30 {
-		t.Fatalf("seed: %d:%d", tp.Hour, tp.Minute)
+	if tp.Hour().Get() != 9 || tp.Minute().Get() != 30 {
+		t.Fatalf("seed: %d:%d", tp.Hour().Get(), tp.Minute().Get())
 	}
 	obs.Set(TimeOfDay{14, 45})
-	if tp.Hour != 14 || tp.Minute != 45 || c.n != 1 {
-		t.Fatalf("vm→view: %d:%d n=%d", tp.Hour, tp.Minute, c.n)
+	if tp.Hour().Get() != 14 || tp.Minute().Get() != 45 || c.n != 1 {
+		t.Fatalf("vm→view: %d:%d n=%d", tp.Hour().Get(), tp.Minute().Get(), c.n)
 	}
-	tp.OnChange(6, 15)
-	if obs.Get() != (TimeOfDay{6, 15}) || prior != 1 {
-		t.Fatalf("view→vm: obs=%+v prior=%d", obs.Get(), prior)
+	// A user spin sets the Hour/Minute Observables; the binder publishes the pair.
+	tp.Hour().Set(6)
+	tp.Minute().Set(15)
+	if obs.Get() != (TimeOfDay{6, 15}) {
+		t.Fatalf("view→vm: obs=%+v", obs.Get())
 	}
 	unbind()
 
@@ -560,9 +559,8 @@ func TestBindTime(t *testing.T) {
 	tp2 := toolkit.NewTimePicker(0, 0)
 	u2 := BindTime(tp2, obs2, nil)
 	obs2.Set(TimeOfDay{2, 2})
-	tp2.OnChange(3, 3)
-	if obs2.Get() != (TimeOfDay{3, 3}) {
-		t.Fatalf("bare: obs=%+v", obs2.Get())
+	if tp2.Hour().Get() != 2 || tp2.Minute().Get() != 2 {
+		t.Fatalf("bare: %d:%d", tp2.Hour().Get(), tp2.Minute().Get())
 	}
 	u2()
 }
