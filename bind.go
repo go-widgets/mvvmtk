@@ -72,12 +72,9 @@ func BindSpin(s *toolkit.SpinButton, obs *mvvm.Observable[int], invalidate func(
 }
 
 // BindListSelection two-way-binds a ListBox's Selected row to an int observable
-// (fields ListBox.Selected / ListBox.OnActivate). Note OnActivate fires on row
-// activation (its only value/index callback slot), so the view→VM edge updates
-// the observable when a row is activated; the VM→view edge sets Selected on any
-// observable change.
+// (via the ListBox.Selected() Observable).
 func BindListSelection(lb *toolkit.ListBox, obs *mvvm.Observable[int], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &lb.Selected, &lb.OnActivate, invalidate)
+	return bindObs2(obs, lb.Selected(), invalidate)
 }
 
 // BindViewSwitcher two-way-binds a ViewSwitcher's Current segment to an int
@@ -99,11 +96,11 @@ func BindToggle(t *toolkit.ToggleButton, obs *mvvm.Observable[bool], invalidate 
 }
 
 // BindRadio two-way-binds a standalone RadioButton's Checked to a bool
-// observable (fields RadioButton.Checked / RadioButton.OnToggle). For a set of
+// observable (via the RadioButton.Checked() Observable). For a set of
 // mutually-exclusive radios use BindRadioGroup, which binds the group's Active
 // index; this helper is for a single, group-less radio behaving like a check.
 func BindRadio(r *toolkit.RadioButton, obs *mvvm.Observable[bool], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &r.Checked, &r.OnToggle, invalidate)
+	return bindObs2(obs, r.Checked(), invalidate)
 }
 
 // BindRating two-way-binds a Rating's Value to an int observable
@@ -131,9 +128,9 @@ func BindNotebook(n *toolkit.Notebook, obs *mvvm.Observable[int], invalidate fun
 }
 
 // BindComboText two-way-binds a ComboBox's Text to a string observable
-// (fields ComboBox.Text / ComboBox.OnChange).
+// (via the ComboBox.Text() Observable).
 func BindComboText(c *toolkit.ComboBox, obs *mvvm.Observable[string], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &c.Text, &c.OnChange, invalidate)
+	return bindObs2(obs, c.Text(), invalidate)
 }
 
 // BindPagination two-way-binds a Pagination's Current page to an int observable
@@ -143,15 +140,15 @@ func BindPagination(pg *toolkit.Pagination, obs *mvvm.Observable[int], invalidat
 }
 
 // BindPagingToolbar two-way-binds a PagingToolbar's Page to an int observable
-// (fields PagingToolbar.Page / PagingToolbar.OnChange).
+// (via the PagingToolbar.Page() Observable).
 func BindPagingToolbar(pt *toolkit.PagingToolbar, obs *mvvm.Observable[int], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &pt.Page, &pt.OnChange, invalidate)
+	return bindObs2(obs, pt.Page(), invalidate)
 }
 
 // BindGanttSelection two-way-binds a Gantt's Selected task to an int observable
-// (fields Gantt.Selected / Gantt.OnSelect).
+// (via the Gantt.Selected() Observable).
 func BindGanttSelection(g *toolkit.Gantt, obs *mvvm.Observable[int], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &g.Selected, &g.OnSelect, invalidate)
+	return bindObs2(obs, g.Selected(), invalidate)
 }
 
 // BindTableSelection two-way-binds a Table's Selected row to an int observable
@@ -163,9 +160,9 @@ func BindTableSelection(t *toolkit.Table, obs *mvvm.Observable[int], invalidate 
 }
 
 // BindCarousel two-way-binds a Carousel's Current slide to an int observable
-// (fields Carousel.Current / Carousel.OnChange).
+// (via the Carousel.Current() Observable).
 func BindCarousel(c *toolkit.Carousel, obs *mvvm.Observable[int], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &c.Current, &c.OnChange, invalidate)
+	return bindObs2(obs, c.Current(), invalidate)
 }
 
 // BindCycle two-way-binds a CycleButton.s Index to an int observable (via the
@@ -176,10 +173,10 @@ func BindCycle(c *toolkit.CycleButton, obs *mvvm.Observable[int], invalidate fun
 }
 
 // BindRadioGroup two-way-binds a RadioGroup's Active member to an int observable
-// (fields RadioGroup.Active / RadioGroup.OnChange). This binds the whole group
+// (via the RadioGroup.Active() Observable). This binds the whole group
 // (which member is checked); BindRadio binds a single group-less radio.
 func BindRadioGroup(g *toolkit.RadioGroup, obs *mvvm.Observable[int], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &g.Active, &g.OnChange, invalidate)
+	return bindObs2(obs, g.Active(), invalidate)
 }
 
 // BindColor two-way-binds a ColorChooser's Color to an RGBA observable (fields
@@ -315,24 +312,37 @@ func BindAccordion(a *toolkit.Accordion, obs *mvvm.Observable[int], invalidate f
 // RangeSlider.OnChange(low, high)). The tuple is a single [2]float64 so a
 // two-handle drag round-trips atomically; index 0 is Low, index 1 is High.
 func BindRange(rs *toolkit.RangeSlider, obs *mvvm.Observable[[2]float64], invalidate func()) (unbind func()) {
-	v := obs.Get()
-	rs.Low, rs.High = v[0], v[1]
-	prev := rs.OnChange
-	rs.OnChange = func(low, high float64) {
-		if prev != nil {
-			prev(low, high)
-		}
-		obs.Set([2]float64{low, high})
+	// syncing suppresses the widget→VM publish while a VM→widget push sets the two
+	// handles one at a time (otherwise the intermediate [new, old] pair would
+	// re-enter obs and double-fire). set() pushes both handles atomically.
+	syncing := false
+	set := func(v [2]float64) {
+		syncing = true
+		rs.Low().Set(v[0])
+		rs.High().Set(v[1])
+		syncing = false
 	}
-	unsub := obs.Subscribe(func(v [2]float64) {
-		rs.Low, rs.High = v[0], v[1]
+	set(obs.Get())
+	// widget → VM: a handle move publishes the current pair.
+	publish := func(float64) {
+		if syncing {
+			return
+		}
+		obs.Set([2]float64{rs.Low().Get(), rs.High().Get()})
+	}
+	uL := rs.Low().Subscribe(publish)
+	uH := rs.High().Subscribe(publish)
+	// VM → widget: set both handles, then repaint.
+	uO := obs.Subscribe(func(v [2]float64) {
+		set(v)
 		if invalidate != nil {
 			invalidate()
 		}
 	})
 	return func() {
-		rs.OnChange = prev
-		unsub()
+		uL()
+		uH()
+		uO()
 	}
 }
 
