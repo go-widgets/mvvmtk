@@ -42,9 +42,9 @@ func bindObs2[T any](vm, widget *mvvm.Observable[T], invalidate func()) (unbind 
 }
 
 // BindText two-way-binds a SearchEntry's Text to a string observable
-// (fields SearchEntry.Text / SearchEntry.OnChange).
+// (via the SearchEntry.Text() Observable).
 func BindText(e *toolkit.SearchEntry, obs *mvvm.Observable[string], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &e.Text, &e.OnChange, invalidate)
+	return bindObs2(obs, e.Text(), invalidate)
 }
 
 // BindEntryText two-way-binds an Entry's Text to a string observable
@@ -183,7 +183,7 @@ func BindRadioGroup(g *toolkit.RadioGroup, obs *mvvm.Observable[int], invalidate
 // ColorChooser.Color / ColorChooser.OnChange). ColorPicker, which exposes no
 // Color field, is bound with BindColorPicker instead.
 func BindColor(c *toolkit.ColorChooser, obs *mvvm.Observable[toolkit.RGBA], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &c.Color, &c.OnChange, invalidate)
+	return bindObs2(obs, c.Color(), invalidate)
 }
 
 // ── One-way sinks (Observable → widget value field) ─────────────────────────
@@ -375,24 +375,41 @@ func BindColorPicker(cp *toolkit.ColorPicker, obs *mvvm.Observable[toolkit.RGBA]
 // SetDate(y, m, d) seed and OnSelect(y, m, d) callback. OnSelect's three-argument
 // signature is not func(Date), so BindField cannot drive it.
 func BindDate(c *toolkit.Calendar, obs *mvvm.Observable[Date], invalidate func()) (unbind func()) {
-	d := obs.Get()
-	c.SetDate(d.Year, d.Month, d.Day)
-	prev := c.OnSelect
-	c.OnSelect = func(y, m, day int) {
-		if prev != nil {
-			prev(y, m, day)
-		}
-		obs.Set(Date{Year: y, Month: m, Day: day})
-	}
-	unsub := obs.Subscribe(func(d Date) {
+	return bindCalendarDate(c, obs, invalidate)
+}
+
+// bindCalendarDate two-way-binds a Calendar's Year()/Month()/Day() Observables to
+// a Date observable. A syncing guard suppresses the widget→VM publish while a
+// VM→widget SetDate sets the three components, so the intermediate partial dates
+// are not published back (like BindRange's guard for the [2]float64 pair).
+func bindCalendarDate(c *toolkit.Calendar, obs *mvvm.Observable[Date], invalidate func()) (unbind func()) {
+	syncing := false
+	set := func(d Date) {
+		syncing = true
 		c.SetDate(d.Year, d.Month, d.Day)
+		syncing = false
+	}
+	set(obs.Get())
+	push := func(int) {
+		if syncing {
+			return
+		}
+		obs.Set(Date{Year: c.Year().Get(), Month: c.Month().Get(), Day: c.Day().Get()})
+	}
+	uY := c.Year().Subscribe(push)
+	uM := c.Month().Subscribe(push)
+	uD := c.Day().Subscribe(push)
+	uO := obs.Subscribe(func(d Date) {
+		set(d)
 		if invalidate != nil {
 			invalidate()
 		}
 	})
 	return func() {
-		c.OnSelect = prev
-		unsub()
+		uY()
+		uM()
+		uD()
+		uO()
 	}
 }
 
@@ -401,25 +418,7 @@ func BindDate(c *toolkit.Calendar, obs *mvvm.Observable[Date], invalidate func()
 // of BindDate (a DatePicker reports its date through OnChange, a Calendar through
 // OnSelect).
 func BindDatePicker(dp *toolkit.DatePicker, obs *mvvm.Observable[Date], invalidate func()) (unbind func()) {
-	d := obs.Get()
-	dp.SetDate(d.Year, d.Month, d.Day)
-	prev := dp.OnChange
-	dp.OnChange = func(y, m, day int) {
-		if prev != nil {
-			prev(y, m, day)
-		}
-		obs.Set(Date{Year: y, Month: m, Day: day})
-	}
-	unsub := obs.Subscribe(func(d Date) {
-		dp.SetDate(d.Year, d.Month, d.Day)
-		if invalidate != nil {
-			invalidate()
-		}
-	})
-	return func() {
-		dp.OnChange = prev
-		unsub()
-	}
+	return bindCalendarDate(dp.Cal, obs, invalidate)
 }
 
 // BindTime two-way-binds a TimePicker's [Hour, Minute] to a TimeOfDay observable
@@ -427,24 +426,32 @@ func BindDatePicker(dp *toolkit.DatePicker, obs *mvvm.Observable[Date], invalida
 // TimePicker.OnChange(hour, minute)). The pair round-trips atomically as one
 // TimeOfDay.
 func BindTime(tp *toolkit.TimePicker, obs *mvvm.Observable[TimeOfDay], invalidate func()) (unbind func()) {
-	t := obs.Get()
-	tp.Hour, tp.Minute = t.Hour, t.Minute
-	prev := tp.OnChange
-	tp.OnChange = func(h, m int) {
-		if prev != nil {
-			prev(h, m)
-		}
-		obs.Set(TimeOfDay{Hour: h, Minute: m})
+	syncing := false
+	set := func(t TimeOfDay) {
+		syncing = true
+		tp.Hour().Set(t.Hour)
+		tp.Minute().Set(t.Minute)
+		syncing = false
 	}
-	unsub := obs.Subscribe(func(t TimeOfDay) {
-		tp.Hour, tp.Minute = t.Hour, t.Minute
+	set(obs.Get())
+	push := func(int) {
+		if syncing {
+			return
+		}
+		obs.Set(TimeOfDay{Hour: tp.Hour().Get(), Minute: tp.Minute().Get()})
+	}
+	uH := tp.Hour().Subscribe(push)
+	uM := tp.Minute().Subscribe(push)
+	uO := obs.Subscribe(func(t TimeOfDay) {
+		set(t)
 		if invalidate != nil {
 			invalidate()
 		}
 	})
 	return func() {
-		tp.OnChange = prev
-		unsub()
+		uH()
+		uM()
+		uO()
 	}
 }
 

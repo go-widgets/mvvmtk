@@ -22,30 +22,28 @@ func (c *counter) inc() { c.n++ }
 func TestBindText(t *testing.T) {
 	obs := mvvm.NewObservable("hi")
 	e := toolkit.NewSearchEntry("stale")
-	prior := 0
-	e.OnChange = func(string) { prior++ } // pre-existing handler, must be composed
 	c := &counter{}
 	unbind := BindText(e, obs, c.inc)
 
-	if e.Text != "hi" {
-		t.Fatalf("seed: Text=%q, want %q", e.Text, "hi")
+	if e.Text().Get() != "hi" {
+		t.Fatalf("seed: Text=%q, want %q", e.Text().Get(), "hi")
 	}
 	obs.Set("world") // VM→view
-	if e.Text != "world" || c.n != 1 {
-		t.Fatalf("vm→view: Text=%q n=%d", e.Text, c.n)
+	if e.Text().Get() != "world" || c.n != 1 {
+		t.Fatalf("vm→view: Text=%q n=%d", e.Text().Get(), c.n)
 	}
-	e.OnChange("typed") // view→VM, prior handler still runs
-	if obs.Get() != "typed" || prior != 1 {
-		t.Fatalf("view→vm: obs=%q prior=%d", obs.Get(), prior)
+	e.Text().Set("typed") // view→VM
+	if obs.Get() != "typed" {
+		t.Fatalf("view→vm: obs=%q", obs.Get())
 	}
 	unbind()
 	obs.Set("after")
-	if e.Text != "typed" {
-		t.Fatalf("after unbind VM→view must stop: Text=%q", e.Text)
+	if e.Text().Get() != "typed" {
+		t.Fatalf("after unbind VM→view must stop: Text=%q", e.Text().Get())
 	}
-	e.OnChange("x") // only the restored prior handler now — must not touch obs
-	if obs.Get() != "after" || prior != 2 {
-		t.Fatalf("after unbind view→vm must stop: obs=%q prior=%d", obs.Get(), prior)
+	e.Text().Set("x") // must not touch obs after unbind
+	if obs.Get() != "after" {
+		t.Fatalf("after unbind view→vm must stop: obs=%q", obs.Get())
 	}
 }
 
