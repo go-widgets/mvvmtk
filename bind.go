@@ -9,13 +9,37 @@ import (
 	"github.com/go-widgets/toolkit"
 )
 
-// ── Two-way scalar bindings (widget value field ⇄ Observable) ───────────────
+// ── Two-way scalar bindings (widget value ⇄ Observable) ─────────────────────
 //
-// Each wraps mvvm.BindField with the widget's real value field and callback
-// slot, so a ViewModel change flows to the field (and repaints via invalidate)
-// and a user edit flows through the widget callback back to the observable.
-// invalidate may be nil. The returned unbind restores the prior callback and
-// detaches the subscription.
+// A ViewModel change flows to the widget (and repaints via invalidate) and a
+// user edit flows back to the observable. Widgets whose state is MVVM-migrated
+// expose it as an Observable accessor, so their binder is bindObs2 (mirror two
+// Observables); the remaining field-based widgets still use mvvm.BindField
+// (pointer to a value field + a callback slot). invalidate may be nil. The
+// returned unbind detaches the subscription(s).
+
+// bindObs2 two-way-binds two Observables — a view-model one and a widget one that
+// a migrated widget exposes through an accessor (e.g. Switch.On(), Rating.Value()).
+// It seeds the widget from the VM, then mirrors each side's changes onto the
+// other; because mvvm.Observable.Set is a no-op on an unchanged value, the mirror
+// converges instead of looping. invalidate (may be nil) fires on a VM→widget push
+// so the host repaints. The returned unbind detaches both subscriptions. This is
+// the accessor-era replacement for mvvm.BindField (which needed a pointer to an
+// exported value field + a callback slot, both gone from MVVM-migrated widgets).
+func bindObs2[T any](vm, widget *mvvm.Observable[T], invalidate func()) (unbind func()) {
+	widget.Set(vm.Get())
+	u1 := vm.Subscribe(func(v T) {
+		widget.Set(v)
+		if invalidate != nil {
+			invalidate()
+		}
+	})
+	u2 := widget.Subscribe(func(v T) { vm.Set(v) })
+	return func() {
+		u1()
+		u2()
+	}
+}
 
 // BindText two-way-binds a SearchEntry's Text to a string observable
 // (fields SearchEntry.Text / SearchEntry.OnChange).
@@ -30,21 +54,21 @@ func BindEntryText(e *toolkit.Entry, obs *mvvm.Observable[string], invalidate fu
 }
 
 // BindChecked two-way-binds a CheckButton's Checked to a bool observable
-// (fields CheckButton.Checked / CheckButton.OnToggle).
+// (via the CheckButton.Checked() Observable).
 func BindChecked(cb *toolkit.CheckButton, obs *mvvm.Observable[bool], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &cb.Checked, &cb.OnToggle, invalidate)
+	return bindObs2(obs, cb.Checked(), invalidate)
 }
 
 // BindSelectedIndex two-way-binds a DropDown's Selected index to an int
-// observable (fields DropDown.Selected / DropDown.OnSelect).
+// observable (via the DropDown.Selected() Observable).
 func BindSelectedIndex(d *toolkit.DropDown, obs *mvvm.Observable[int], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &d.Selected, &d.OnSelect, invalidate)
+	return bindObs2(obs, d.Selected(), invalidate)
 }
 
 // BindSpin two-way-binds a SpinButton's Value to an int observable
-// (fields SpinButton.Value / SpinButton.OnChange).
+// (via the SpinButton.Value() Observable).
 func BindSpin(s *toolkit.SpinButton, obs *mvvm.Observable[int], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &s.Value, &s.OnChange, invalidate)
+	return bindObs2(obs, s.Value(), invalidate)
 }
 
 // BindListSelection two-way-binds a ListBox's Selected row to an int observable
@@ -57,21 +81,21 @@ func BindListSelection(lb *toolkit.ListBox, obs *mvvm.Observable[int], invalidat
 }
 
 // BindViewSwitcher two-way-binds a ViewSwitcher's Current segment to an int
-// observable (fields ViewSwitcher.Current / ViewSwitcher.OnChange).
+// observable (via the ViewSwitcher.Current() Observable).
 func BindViewSwitcher(v *toolkit.ViewSwitcher, obs *mvvm.Observable[int], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &v.Current, &v.OnChange, invalidate)
+	return bindObs2(obs, v.Current(), invalidate)
 }
 
 // BindSwitch two-way-binds a Switch's On to a bool observable
-// (fields Switch.On / Switch.OnToggle).
+// (via the Switch.On() Observable).
 func BindSwitch(s *toolkit.Switch, obs *mvvm.Observable[bool], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &s.On, &s.OnToggle, invalidate)
+	return bindObs2(obs, s.On(), invalidate)
 }
 
 // BindToggle two-way-binds a ToggleButton's Pressed to a bool observable
-// (fields ToggleButton.Pressed / ToggleButton.OnToggle).
+// (via the ToggleButton.Pressed() Observable).
 func BindToggle(t *toolkit.ToggleButton, obs *mvvm.Observable[bool], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &t.Pressed, &t.OnToggle, invalidate)
+	return bindObs2(obs, t.Pressed(), invalidate)
 }
 
 // BindRadio two-way-binds a standalone RadioButton's Checked to a bool
@@ -83,27 +107,27 @@ func BindRadio(r *toolkit.RadioButton, obs *mvvm.Observable[bool], invalidate fu
 }
 
 // BindRating two-way-binds a Rating's Value to an int observable
-// (fields Rating.Value / Rating.OnChange).
+// (via the Rating.Value() Observable).
 func BindRating(r *toolkit.Rating, obs *mvvm.Observable[int], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &r.Value, &r.OnChange, invalidate)
+	return bindObs2(obs, r.Value(), invalidate)
 }
 
 // BindScale two-way-binds a Scale's Value to a float64 observable
-// (fields Scale.Value / Scale.OnChange).
+// (via the Scale.Value() Observable).
 func BindScale(s *toolkit.Scale, obs *mvvm.Observable[float64], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &s.Value, &s.OnChange, invalidate)
+	return bindObs2(obs, s.Value(), invalidate)
 }
 
 // BindExpander two-way-binds an Expander's Expanded to a bool observable
-// (fields Expander.Expanded / Expander.OnExpand).
+// (via the Expander.Expanded() Observable).
 func BindExpander(e *toolkit.Expander, obs *mvvm.Observable[bool], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &e.Expanded, &e.OnExpand, invalidate)
+	return bindObs2(obs, e.Expanded(), invalidate)
 }
 
 // BindNotebook two-way-binds a Notebook's Active tab to an int observable
-// (fields Notebook.Active / Notebook.OnTabChanged).
+// (via the Notebook.Active() Observable).
 func BindNotebook(n *toolkit.Notebook, obs *mvvm.Observable[int], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &n.Active, &n.OnTabChanged, invalidate)
+	return bindObs2(obs, n.Active(), invalidate)
 }
 
 // BindComboText two-way-binds a ComboBox's Text to a string observable
@@ -113,9 +137,9 @@ func BindComboText(c *toolkit.ComboBox, obs *mvvm.Observable[string], invalidate
 }
 
 // BindPagination two-way-binds a Pagination's Current page to an int observable
-// (fields Pagination.Current / Pagination.OnChange).
+// (via the Pagination.Current() Observable).
 func BindPagination(pg *toolkit.Pagination, obs *mvvm.Observable[int], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &pg.Current, &pg.OnChange, invalidate)
+	return bindObs2(obs, pg.Current(), invalidate)
 }
 
 // BindPagingToolbar two-way-binds a PagingToolbar's Page to an int observable
@@ -144,12 +168,11 @@ func BindCarousel(c *toolkit.Carousel, obs *mvvm.Observable[int], invalidate fun
 	return mvvm.BindField(obs, &c.Current, &c.OnChange, invalidate)
 }
 
-// BindCycle two-way-binds a CycleButton's Index to an int observable (fields
-// CycleButton.Index / CycleButton.OnChangeIndex). It binds the single-argument
-// OnChangeIndex slot; the multi-argument OnChange (index, value) is left free
-// for a host that also wants the value.
+// BindCycle two-way-binds a CycleButton.s Index to an int observable (via the
+// CycleButton.Index() Observable). A host that also wants the option string reads
+// CycleButton.Value() itself.
 func BindCycle(c *toolkit.CycleButton, obs *mvvm.Observable[int], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &c.Index, &c.OnChangeIndex, invalidate)
+	return bindObs2(obs, c.Index(), invalidate)
 }
 
 // BindRadioGroup two-way-binds a RadioGroup's Active member to an int observable
@@ -280,31 +303,11 @@ type TimeOfDay struct {
 	Minute int // 0..59
 }
 
-// BindAccordion two-way-binds an Accordion's Expanded section index to an int
-// observable (field Accordion.Expanded, callback Accordion.OnToggle). OnToggle's
-// (i, expanded) signature is not func(int), so BindField cannot drive it; this
-// helper composes OnToggle and, after each toggle, publishes the resulting
-// Expanded index. It binds the exclusive-mode single-expanded index (-1 when all
-// are collapsed); a Multiple-mode accordion does not track a single index.
+// BindAccordion two-way-binds an Accordion.s exclusive-mode Expanded section
+// index to an int observable (via the Accordion.Expanded() Observable; -1 when
+// all are collapsed). A Multiple-mode accordion does not track a single index.
 func BindAccordion(a *toolkit.Accordion, obs *mvvm.Observable[int], invalidate func()) (unbind func()) {
-	a.Expanded = obs.Get()
-	prev := a.OnToggle
-	a.OnToggle = func(i int, expanded bool) {
-		if prev != nil {
-			prev(i, expanded)
-		}
-		obs.Set(a.Expanded)
-	}
-	unsub := obs.Subscribe(func(v int) {
-		a.Expanded = v
-		if invalidate != nil {
-			invalidate()
-		}
-	})
-	return func() {
-		a.OnToggle = prev
-		unsub()
-	}
+	return bindObs2(obs, a.Expanded(), invalidate)
 }
 
 // BindRange two-way-binds a RangeSlider's [Low, High] pair to a [2]float64

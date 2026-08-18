@@ -23,20 +23,20 @@ func TestBindSwitch(t *testing.T) {
 	s := toolkit.NewSwitch(true)
 	c := &counter{}
 	unbind := BindSwitch(s, obs, c.inc)
-	if s.On != false {
-		t.Fatalf("seed: On=%v, want false", s.On)
+	if s.On().Get() != false {
+		t.Fatalf("seed: On=%v, want false", s.On().Get())
 	}
 	obs.Set(true)
-	if !s.On || c.n != 1 {
-		t.Fatalf("vm→view: On=%v n=%d", s.On, c.n)
+	if !s.On().Get() || c.n != 1 {
+		t.Fatalf("vm→view: On=%v n=%d", s.On().Get(), c.n)
 	}
-	s.OnToggle(false)
+	s.On().Set(false)
 	if obs.Get() != false {
 		t.Fatalf("view→vm: obs=%v", obs.Get())
 	}
 	unbind()
 	obs.Set(true)
-	if s.On {
+	if s.On().Get() {
 		t.Fatal("unbind: VM→view must stop")
 	}
 }
@@ -46,14 +46,14 @@ func TestBindToggle(t *testing.T) {
 	tb := toolkit.NewToggleButton("b", true)
 	c := &counter{}
 	unbind := BindToggle(tb, obs, c.inc)
-	if tb.Pressed != false {
-		t.Fatalf("seed: Pressed=%v", tb.Pressed)
+	if tb.Pressed().Get() != false {
+		t.Fatalf("seed: Pressed=%v", tb.Pressed().Get())
 	}
 	obs.Set(true)
-	if !tb.Pressed || c.n != 1 {
-		t.Fatalf("vm→view: Pressed=%v n=%d", tb.Pressed, c.n)
+	if !tb.Pressed().Get() || c.n != 1 {
+		t.Fatalf("vm→view: Pressed=%v n=%d", tb.Pressed().Get(), c.n)
 	}
-	tb.OnToggle(false)
+	tb.Pressed().Set(false)
 	if obs.Get() != false {
 		t.Fatalf("view→vm: obs=%v", obs.Get())
 	}
@@ -85,14 +85,14 @@ func TestBindRating(t *testing.T) {
 	r := toolkit.NewRating(5, 5)
 	c := &counter{}
 	unbind := BindRating(r, obs, c.inc)
-	if r.Value != 0 {
-		t.Fatalf("seed: Value=%d", r.Value)
+	if r.Value().Get() != 0 {
+		t.Fatalf("seed: Value=%d", r.Value().Get())
 	}
 	obs.Set(3)
-	if r.Value != 3 || c.n != 1 {
-		t.Fatalf("vm→view: Value=%d n=%d", r.Value, c.n)
+	if r.Value().Get() != 3 || c.n != 1 {
+		t.Fatalf("vm→view: Value=%d n=%d", r.Value().Get(), c.n)
 	}
-	r.OnChange(4)
+	r.Value().Set(4)
 	if obs.Get() != 4 {
 		t.Fatalf("view→vm: obs=%d", obs.Get())
 	}
@@ -104,14 +104,14 @@ func TestBindScale(t *testing.T) {
 	s := toolkit.NewScale(0, 10, 7)
 	c := &counter{}
 	unbind := BindScale(s, obs, c.inc)
-	if s.Value != 0 {
-		t.Fatalf("seed: Value=%v", s.Value)
+	if s.Value().Get() != 0 {
+		t.Fatalf("seed: Value=%v", s.Value().Get())
 	}
 	obs.Set(2.5)
-	if s.Value != 2.5 || c.n != 1 {
-		t.Fatalf("vm→view: Value=%v n=%d", s.Value, c.n)
+	if s.Value().Get() != 2.5 || c.n != 1 {
+		t.Fatalf("vm→view: Value=%v n=%d", s.Value().Get(), c.n)
 	}
-	s.OnChange(4.5)
+	s.Value().Set(4.5)
 	if obs.Get() != 4.5 {
 		t.Fatalf("view→vm: obs=%v", obs.Get())
 	}
@@ -121,17 +121,17 @@ func TestBindScale(t *testing.T) {
 func TestBindExpander(t *testing.T) {
 	obs := mvvm.NewObservable(false)
 	e := toolkit.NewExpander("x", nil)
-	e.Expanded = true
+	e.Expanded().Set(true)
 	c := &counter{}
 	unbind := BindExpander(e, obs, c.inc)
-	if e.Expanded != false {
-		t.Fatalf("seed: Expanded=%v", e.Expanded)
+	if e.Expanded().Get() != false {
+		t.Fatalf("seed: Expanded=%v", e.Expanded().Get())
 	}
 	obs.Set(true)
-	if !e.Expanded || c.n != 1 {
-		t.Fatalf("vm→view: Expanded=%v n=%d", e.Expanded, c.n)
+	if !e.Expanded().Get() || c.n != 1 {
+		t.Fatalf("vm→view: Expanded=%v n=%d", e.Expanded().Get(), c.n)
 	}
-	e.OnExpand(false)
+	e.Expanded().Set(false)
 	if obs.Get() != false {
 		t.Fatalf("view→vm: obs=%v", obs.Get())
 	}
@@ -141,17 +141,17 @@ func TestBindExpander(t *testing.T) {
 func TestBindNotebook(t *testing.T) {
 	obs := mvvm.NewObservable(0)
 	n := toolkit.NewNotebook()
-	n.Active = 3
+	n.Active().Set(3)
 	c := &counter{}
 	unbind := BindNotebook(n, obs, c.inc)
-	if n.Active != 0 {
-		t.Fatalf("seed: Active=%d", n.Active)
+	if n.Active().Get() != 0 {
+		t.Fatalf("seed: Active=%d", n.Active().Get())
 	}
 	obs.Set(2)
-	if n.Active != 2 || c.n != 1 {
-		t.Fatalf("vm→view: Active=%d n=%d", n.Active, c.n)
+	if n.Active().Get() != 2 || c.n != 1 {
+		t.Fatalf("vm→view: Active=%d n=%d", n.Active().Get(), c.n)
 	}
-	n.OnTabChanged(1)
+	n.Active().Set(1)
 	if obs.Get() != 1 {
 		t.Fatalf("view→vm: obs=%d", obs.Get())
 	}
@@ -182,14 +182,14 @@ func TestBindPagination(t *testing.T) {
 	pg := toolkit.NewPagination(5, 10)
 	c := &counter{}
 	unbind := BindPagination(pg, obs, c.inc)
-	if pg.Current != 1 {
-		t.Fatalf("seed: Current=%d", pg.Current)
+	if pg.Current().Get() != 1 {
+		t.Fatalf("seed: Current=%d", pg.Current().Get())
 	}
 	obs.Set(4)
-	if pg.Current != 4 || c.n != 1 {
-		t.Fatalf("vm→view: Current=%d n=%d", pg.Current, c.n)
+	if pg.Current().Get() != 4 || c.n != 1 {
+		t.Fatalf("vm→view: Current=%d n=%d", pg.Current().Get(), c.n)
 	}
-	pg.OnChange(7)
+	pg.Current().Set(7)
 	if obs.Get() != 7 {
 		t.Fatalf("view→vm: obs=%d", obs.Get())
 	}
@@ -282,17 +282,17 @@ func TestBindCarousel(t *testing.T) {
 func TestBindCycle(t *testing.T) {
 	obs := mvvm.NewObservable(0)
 	cy := toolkit.NewCycleButton("List", "Grid", "Compact")
-	cy.Index = 2
+	cy.Index().Set(2)
 	c := &counter{}
 	unbind := BindCycle(cy, obs, c.inc)
-	if cy.Index != 0 {
-		t.Fatalf("seed: Index=%d", cy.Index)
+	if cy.Index().Get() != 0 {
+		t.Fatalf("seed: Index=%d", cy.Index().Get())
 	}
 	obs.Set(2)
-	if cy.Index != 2 || c.n != 1 {
-		t.Fatalf("vm→view: Index=%d n=%d", cy.Index, c.n)
+	if cy.Index().Get() != 2 || c.n != 1 {
+		t.Fatalf("vm→view: Index=%d n=%d", cy.Index().Get(), c.n)
 	}
-	cy.OnChangeIndex(1)
+	cy.Index().Set(1)
 	if obs.Get() != 1 {
 		t.Fatalf("view→vm: obs=%d", obs.Get())
 	}
@@ -349,43 +349,40 @@ func TestBindColor(t *testing.T) {
 func TestBindAccordion(t *testing.T) {
 	obs := mvvm.NewObservable(-1)
 	a := toolkit.NewAccordion([]toolkit.AccordionSection{{Title: "One"}, {Title: "Two"}})
-	a.Expanded = 1
-	prior := 0
-	a.OnToggle = func(int, bool) { prior++ }
+	a.Expanded().Set(1)
 	c := &counter{}
 	unbind := BindAccordion(a, obs, c.inc)
-	if a.Expanded != -1 {
-		t.Fatalf("seed: Expanded=%d", a.Expanded)
+	if a.Expanded().Get() != -1 {
+		t.Fatalf("seed should override widget: Expanded=%d", a.Expanded().Get())
 	}
 	obs.Set(0)
-	if a.Expanded != 0 || c.n != 1 {
-		t.Fatalf("vm→view: Expanded=%d n=%d", a.Expanded, c.n)
+	if a.Expanded().Get() != 0 || c.n != 1 {
+		t.Fatalf("vm→view: Expanded=%d n=%d", a.Expanded().Get(), c.n)
 	}
-	// A real toggle sets Expanded then fires OnToggle; the binder publishes the
-	// resulting index and the prior handler still runs.
-	a.Expanded = 1
-	a.OnToggle(1, true)
-	if obs.Get() != 1 || prior != 1 {
-		t.Fatalf("view→vm: obs=%d prior=%d", obs.Get(), prior)
+	// A user toggle flips the widget's Expanded Observable; the binder publishes it.
+	a.Expanded().Set(1)
+	if obs.Get() != 1 {
+		t.Fatalf("view→vm: obs=%d", obs.Get())
 	}
 	unbind()
-	obs.Set(0)
-	if a.Expanded != 1 {
+	obs.Set(2)
+	if a.Expanded().Get() != 1 {
 		t.Fatal("unbind: VM→view must stop")
 	}
-	a.Expanded = 0
-	a.OnToggle(0, false) // only prior remains
-	if obs.Get() != 0 || prior != 2 {
-		t.Fatalf("unbind: view→vm must stop, obs=%d prior=%d", obs.Get(), prior)
+	a.Expanded().Set(0)
+	if obs.Get() != 2 {
+		t.Fatalf("unbind: view→vm must stop, obs=%d", obs.Get())
 	}
 
-	// Bare path: no prior callback, nil invalidate — must not panic.
+	// Bare path: nil invalidate — must not panic.
 	obs2 := mvvm.NewObservable(-1)
 	a2 := toolkit.NewAccordion([]toolkit.AccordionSection{{Title: "X"}})
 	u2 := BindAccordion(a2, obs2, nil)
 	obs2.Set(0) // invalidate == nil branch
-	a2.Expanded = 0
-	a2.OnToggle(0, true) // prev == nil branch
+	if a2.Expanded().Get() != 0 {
+		t.Fatalf("bare vm→view: Expanded=%d", a2.Expanded().Get())
+	}
+	a2.Expanded().Set(0) // no-op change, still fine
 	if obs2.Get() != 0 {
 		t.Fatalf("bare: obs=%d", obs2.Get())
 	}
