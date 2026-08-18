@@ -238,23 +238,23 @@ func TestBindGanttSelection(t *testing.T) {
 func TestBindTableSelection(t *testing.T) {
 	obs := mvvm.NewObservable(-1)
 	tb := toolkit.NewTable([]toolkit.TableColumn{{Title: "A"}}, [][]string{{"r0"}, {"r1"}})
-	tb.Selected = 1
+	tb.Selected().Set(1)
 	c := &counter{}
 	unbind := BindTableSelection(tb, obs, c.inc)
-	if tb.Selected != -1 {
-		t.Fatalf("seed: Selected=%d", tb.Selected)
+	if tb.Selected().Get() != -1 {
+		t.Fatalf("seed: Selected=%d", tb.Selected().Get())
 	}
 	obs.Set(1)
-	if tb.Selected != 1 || c.n != 1 {
-		t.Fatalf("vm→view: Selected=%d n=%d", tb.Selected, c.n)
+	if tb.Selected().Get() != 1 || c.n != 1 {
+		t.Fatalf("vm→view: Selected=%d n=%d", tb.Selected().Get(), c.n)
 	}
-	tb.OnSelect(0)
+	tb.Selected().Set(0)
 	if obs.Get() != 0 {
 		t.Fatalf("view→vm: obs=%d", obs.Get())
 	}
 	unbind()
 	obs.Set(1)
-	if tb.Selected != 0 {
+	if tb.Selected().Get() != 0 {
 		t.Fatal("unbind: VM→view must stop")
 	}
 }

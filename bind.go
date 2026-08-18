@@ -152,11 +152,10 @@ func BindGanttSelection(g *toolkit.Gantt, obs *mvvm.Observable[int], invalidate 
 }
 
 // BindTableSelection two-way-binds a Table's Selected row to an int observable
-// (fields Table.Selected / Table.OnSelect). OnSelect fires on a MultiSelect
-// anchor-moving click and on a keyboard cursor move, so the view→VM edge tracks
-// either interaction; the VM→view edge sets Selected on any observable change.
+// (via the Table.Selected() Observable). While MultiSelect is on, Selected
+// doubles as the anchor row, so the same edge tracks a range-anchor move.
 func BindTableSelection(t *toolkit.Table, obs *mvvm.Observable[int], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &t.Selected, &t.OnSelect, invalidate)
+	return bindObs2(obs, t.Selected(), invalidate)
 }
 
 // BindCarousel two-way-binds a Carousel's Current slide to an int observable
