@@ -47,10 +47,10 @@ func BindText(e *toolkit.SearchEntry, obs *mvvm.Observable[string], invalidate f
 	return bindObs2(obs, e.Text(), invalidate)
 }
 
-// BindEntryText two-way-binds an Entry's Text to a string observable
-// (fields Entry.Text / Entry.OnChange).
+// BindEntryText two-way-binds an Entry.s Text to a string observable
+// (via the Entry.Text() Observable).
 func BindEntryText(e *toolkit.Entry, obs *mvvm.Observable[string], invalidate func()) (unbind func()) {
-	return mvvm.BindField(obs, &e.Text, &e.OnChange, invalidate)
+	return bindObs2(obs, e.Text(), invalidate)
 }
 
 // BindChecked two-way-binds a CheckButton's Checked to a bool observable
