@@ -350,24 +350,7 @@ func BindRange(rs *toolkit.RangeSlider, obs *mvvm.Observable[[2]float64], invali
 // OnChange(c) callback. ColorChooser, which does expose a Color field, uses the
 // field-based BindColor instead.
 func BindColorPicker(cp *toolkit.ColorPicker, obs *mvvm.Observable[toolkit.RGBA], invalidate func()) (unbind func()) {
-	cp.SetColor(obs.Get())
-	prev := cp.OnChange
-	cp.OnChange = func(c toolkit.RGBA) {
-		if prev != nil {
-			prev(c)
-		}
-		obs.Set(c)
-	}
-	unsub := obs.Subscribe(func(c toolkit.RGBA) {
-		cp.SetColor(c)
-		if invalidate != nil {
-			invalidate()
-		}
-	})
-	return func() {
-		cp.OnChange = prev
-		unsub()
-	}
+	return bindObs2(obs, cp.Color(), invalidate)
 }
 
 // BindDate two-way-binds a Calendar's selected date to a Date observable via its

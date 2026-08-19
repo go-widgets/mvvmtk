@@ -438,24 +438,22 @@ func TestBindColorPicker(t *testing.T) {
 	green := toolkit.RGBA{G: 255, A: 255}
 	obs := mvvm.NewObservable(red)
 	cp := toolkit.NewColorPicker(blue)
-	prior := 0
-	cp.OnChange = func(toolkit.RGBA) { prior++ }
 	c := &counter{}
 	unbind := BindColorPicker(cp, obs, c.inc)
-	if cp.Color() != red {
-		t.Fatalf("seed: Color=%+v", cp.Color())
+	if cp.Color().Get() != red {
+		t.Fatalf("seed: Color=%+v", cp.Color().Get())
 	}
 	obs.Set(green)
-	if cp.Color() != green || c.n != 1 {
-		t.Fatalf("vm→view: Color=%+v n=%d", cp.Color(), c.n)
+	if cp.Color().Get() != green || c.n != 1 {
+		t.Fatalf("vm→view: Color=%+v n=%d", cp.Color().Get(), c.n)
 	}
-	cp.OnChange(blue)
-	if obs.Get() != blue || prior != 1 {
-		t.Fatalf("view→vm: obs=%+v prior=%d", obs.Get(), prior)
+	cp.Color().Set(blue)
+	if obs.Get() != blue {
+		t.Fatalf("view→vm: obs=%+v", obs.Get())
 	}
 	unbind()
 	obs.Set(red)
-	if cp.Color() != blue {
+	if cp.Color().Get() != blue {
 		t.Fatal("unbind: VM→view must stop")
 	}
 
@@ -464,7 +462,7 @@ func TestBindColorPicker(t *testing.T) {
 	cp2 := toolkit.NewColorPicker(blue)
 	u2 := BindColorPicker(cp2, obs2, nil)
 	obs2.Set(green)
-	cp2.OnChange(red)
+	cp2.Color().Set(red)
 	if obs2.Get() != red {
 		t.Fatalf("bare: obs=%+v", obs2.Get())
 	}
