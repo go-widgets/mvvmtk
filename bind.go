@@ -459,24 +459,7 @@ func BindTime(tp *toolkit.TimePicker, obs *mvvm.Observable[TimeOfDay], invalidat
 // callback (which carries no value, so the view→VM edge reads Text() when it
 // fires). This is the accessor-based binding pattern.
 func BindTextView(tv *toolkit.TextView, obs *mvvm.Observable[string], invalidate func()) (unbind func()) {
-	tv.SetText(obs.Get())
-	prev := tv.OnChange
-	tv.OnChange = func() {
-		if prev != nil {
-			prev()
-		}
-		obs.Set(tv.Text())
-	}
-	unsub := obs.Subscribe(func(s string) {
-		tv.SetText(s)
-		if invalidate != nil {
-			invalidate()
-		}
-	})
-	return func() {
-		tv.OnChange = prev
-		unsub()
-	}
+	return bindObs2(obs, tv.Text(), invalidate)
 }
 
 // BindAgendaRename two-way-binds an AgendaSidebar's calendar names to a string

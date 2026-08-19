@@ -568,27 +568,23 @@ func TestBindTime(t *testing.T) {
 func TestBindTextView(t *testing.T) {
 	obs := mvvm.NewObservable("hello")
 	tv := toolkit.NewTextView("stale")
-	prior := 0
-	tv.OnChange = func() { prior++ }
 	c := &counter{}
 	unbind := BindTextView(tv, obs, c.inc)
-	if tv.Text() != "hello" {
-		t.Fatalf("seed: Text=%q", tv.Text())
+	if tv.Text().Get() != "hello" {
+		t.Fatalf("seed: Text=%q", tv.Text().Get())
 	}
 	obs.Set("world")
-	if tv.Text() != "world" || c.n != 1 {
-		t.Fatalf("vm→view: Text=%q n=%d", tv.Text(), c.n)
+	if tv.Text().Get() != "world" || c.n != 1 {
+		t.Fatalf("vm→view: Text=%q n=%d", tv.Text().Get(), c.n)
 	}
-	// A view edit sets the buffer then fires the value-less OnChange; the binder
-	// reads Text() back into the observable.
+	// A view edit publishes through Text(); the binder reads it back into obs.
 	tv.SetText("typed")
-	tv.OnChange()
-	if obs.Get() != "typed" || prior != 1 {
-		t.Fatalf("view→vm: obs=%q prior=%d", obs.Get(), prior)
+	if obs.Get() != "typed" {
+		t.Fatalf("view→vm: obs=%q", obs.Get())
 	}
 	unbind()
 	obs.Set("after")
-	if tv.Text() != "typed" {
+	if tv.Text().Get() != "typed" {
 		t.Fatal("unbind: VM→view must stop")
 	}
 
@@ -598,7 +594,6 @@ func TestBindTextView(t *testing.T) {
 	u2 := BindTextView(tv2, obs2, nil)
 	obs2.Set("b")
 	tv2.SetText("c")
-	tv2.OnChange()
 	if obs2.Get() != "c" {
 		t.Fatalf("bare: obs=%q", obs2.Get())
 	}
