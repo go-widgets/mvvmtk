@@ -55,14 +55,14 @@ func TestBindEntryText(t *testing.T) {
 	unbind := BindEntryText(e, obs, c.inc)
 	defer unbind()
 
-	if e.Text != "a" {
-		t.Fatalf("seed: Text=%q", e.Text)
+	if e.Text().Get() != "a" {
+		t.Fatalf("seed: Text=%q", e.Text().Get())
 	}
 	obs.Set("b")
-	if e.Text != "b" || c.n != 1 {
-		t.Fatalf("vm→view: Text=%q n=%d", e.Text, c.n)
+	if e.Text().Get() != "b" || c.n != 1 {
+		t.Fatalf("vm→view: Text=%q n=%d", e.Text().Get(), c.n)
 	}
-	e.OnChange("c")
+	e.Text().Set("c")
 	if obs.Get() != "c" {
 		t.Fatalf("view→vm: obs=%q", obs.Get())
 	}
