@@ -189,10 +189,17 @@ func BindColor(c *toolkit.ColorChooser, obs *mvvm.Observable[toolkit.RGBA], inva
 //
 // For view-only widgets that carry no user-edit callback. Wraps mvvm.OneWay.
 
-// BindLabel one-way-binds a string observable to a Label's Text
-// (field Label.Text; a Label has no edit callback).
+// BindLabel one-way-binds a string observable to a Label's Text() Observable
+// (a Label has no edit callback, so this is vm→view only): it seeds the label
+// from obs now, then pushes every later obs value onto Label.Text().
 func BindLabel(l *toolkit.Label, obs *mvvm.Observable[string], invalidate func()) (unbind func()) {
-	return mvvm.OneWay(obs, &l.Text, invalidate)
+	l.Text().Set(obs.Get())
+	return obs.Subscribe(func(s string) {
+		l.Text().Set(s)
+		if invalidate != nil {
+			invalidate()
+		}
+	})
 }
 
 // BindProgress one-way-binds a float64 observable to a ProgressBar's Fraction

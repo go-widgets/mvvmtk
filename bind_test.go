@@ -180,17 +180,17 @@ func TestBindLabel(t *testing.T) {
 	c := &counter{}
 	unbind := BindLabel(l, obs, c.inc)
 
-	if l.Text != "start" {
-		t.Fatalf("seed: Text=%q", l.Text)
+	if l.Text().Get() != "start" {
+		t.Fatalf("seed: Text=%q", l.Text().Get())
 	}
 	obs.Set("next")
-	if l.Text != "next" || c.n != 1 {
-		t.Fatalf("push: Text=%q n=%d", l.Text, c.n)
+	if l.Text().Get() != "next" || c.n != 1 {
+		t.Fatalf("push: Text=%q n=%d", l.Text().Get(), c.n)
 	}
 	unbind()
 	obs.Set("ignored")
-	if l.Text != "next" {
-		t.Fatalf("after unbind Text changed: %q", l.Text)
+	if l.Text().Get() != "next" {
+		t.Fatalf("after unbind Text changed: %q", l.Text().Get())
 	}
 }
 
