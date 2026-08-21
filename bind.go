@@ -202,11 +202,17 @@ func BindLabel(l *toolkit.Label, obs *mvvm.Observable[string], invalidate func()
 	})
 }
 
-// BindProgress one-way-binds a float64 observable to a ProgressBar's Fraction
-// (field ProgressBar.Fraction; a ProgressBar has no edit callback). Callers
-// keep the value in the widget's [0,1] domain.
+// BindProgress one-way-binds a float64 observable to a ProgressBar's Fraction()
+// Observable (a ProgressBar is display-only, with no edit callback). Callers keep
+// the value in the widget's [0,1] domain.
 func BindProgress(p *toolkit.ProgressBar, obs *mvvm.Observable[float64], invalidate func()) (unbind func()) {
-	return mvvm.OneWay(obs, &p.Fraction, invalidate)
+	p.Fraction().Set(obs.Get()) // seed widget from the source, like mvvm.OneWay
+	return obs.Subscribe(func(v float64) {
+		p.Fraction().Set(v)
+		if invalidate != nil {
+			invalidate()
+		}
+	})
 }
 
 // ── Collection bindings (ObservableList → widget []string source) ───────────
