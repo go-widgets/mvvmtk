@@ -202,12 +202,12 @@ func TestBindProgress(t *testing.T) {
 	unbind := BindProgress(p, obs, c.inc)
 	defer unbind()
 
-	if p.Fraction != 0.25 {
-		t.Fatalf("seed: Fraction=%v", p.Fraction)
+	if p.Fraction().Get() != 0.25 {
+		t.Fatalf("seed: Fraction=%v", p.Fraction().Get())
 	}
 	obs.Set(0.75)
-	if p.Fraction != 0.75 || c.n != 1 {
-		t.Fatalf("push: Fraction=%v n=%d", p.Fraction, c.n)
+	if p.Fraction().Get() != 0.75 || c.n != 1 {
+		t.Fatalf("push: Fraction=%v n=%d", p.Fraction().Get(), c.n)
 	}
 }
 
