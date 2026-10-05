@@ -41,12 +41,14 @@ field and callback names filled in — no business logic. Every helper returns a
 | `BindListItems[T](*ListBox, *ObservableList[T], project, invalidate)` | `Items` | list → widget |
 | `BindDropDownOptions[T](*DropDown, *ObservableList[T], project, invalidate)` | `Options` | list → widget |
 | `BindViews[T](*ViewSwitcher, *ObservableList[T], project, invalidate)` | `Views` | list → widget |
-| `BindCommand(*Button, *Command, invalidate)` | `OnClick` + `Style` greying | command |
+| `BindCommand(*Button, *Command, invalidate)` | `OnClick` + `Disabled` + `Style` greying | command |
 | `BindTree[T](*TreeTable, *ObservableList[T], project, invalidate)` | `Root` forest | list → widget |
 
-`BindCommand` reflects `CanExecute` by greying the button — swapping its `Style`
-to `ButtonSecondary` when the command cannot execute and restoring the original
-`Style` when it can — because a `Button` has no boolean "disabled" field.
+`BindCommand` binds the button's `Disabled` state to `!CanExecute`: a button whose
+command cannot run takes no click, no Enter/Space and no keyboard focus. It also
+greys the button as it always has — swapping its `Style` to `ButtonSecondary`
+when the command cannot execute and restoring the original `Style` when it can.
+The returned unbind puts `OnClick`, `Style` and `Disabled` back as they were.
 
 `BindTree` rebuilds a `TreeTable.Root` (`[]*TreeTableNode` forest) from the
 list; the caller's `project` owns each node's `Cells`/`Children`.
