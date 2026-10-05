@@ -377,3 +377,68 @@ func TestBindTree(t *testing.T) {
 	}
 	u2()
 }
+
+// TestBindCommandDisablesTheButton: a button whose command cannot execute is
+// really disabled, not merely restyled -- a click and Enter do not reach
+// OnClick, and Tab does not focus it -- and comes back when the command can run
+// again. Before #31 only the Style changed, so the button still took clicks
+// (which Execute then ignored, but the host's own handler ran) and focus.
+func TestBindCommandDisablesTheButton(t *testing.T) {
+	allowed := mvvm.NewObservable(false)
+	runs := 0
+	cmd := mvvm.NewCommand(func() { runs++ }, allowed.Get)
+	mvvm.BindCanExecute(cmd, allowed)
+
+	b := toolkit.NewButton("Connect", nil)
+	clicks := 0
+	b.OnClick = func() { clicks++ }
+	root := toolkit.NewVBox()
+	root.Append(b)
+	root.SetBounds(toolkit.Rect{X: 0, Y: 0, W: 100, H: 30})
+	unbind := BindCommand(b, cmd, nil)
+
+	root.OnEvent(toolkit.Event{Kind: toolkit.EventClick, X: 50, Y: 15})
+	b.OnEvent(toolkit.Event{Kind: toolkit.EventKeyDown, Code: "Enter"})
+	if clicks != 0 || runs != 0 {
+		t.Errorf("a button whose command cannot execute fired: clicks=%d runs=%d", clicks, runs)
+	}
+	root.OnEvent(toolkit.Event{Kind: toolkit.EventKeyDown, Code: "Tab"})
+	if b.Focused() {
+		t.Error("Tab focused a button whose command cannot execute")
+	}
+	if !b.Disabled().Get() {
+		t.Fatal("a button whose command cannot execute is not Disabled")
+	}
+	clicks = 0
+	b.SetFocused(false)
+
+	allowed.Set(true)
+	if b.Disabled().Get() {
+		t.Fatal("the button stayed Disabled once the command can execute")
+	}
+	root.OnEvent(toolkit.Event{Kind: toolkit.EventKeyDown, Code: "Tab"})
+	if !b.Focused() {
+		t.Fatal("Tab did not focus the button once its command can execute")
+	}
+	root.OnEvent(toolkit.Event{Kind: toolkit.EventClick, X: 50, Y: 15})
+	if clicks != 1 || runs != 1 {
+		t.Fatalf("an enabled button's click: clicks=%d runs=%d, want 1/1", clicks, runs)
+	}
+
+	// Unbind restores the Disabled state the button had before binding, even
+	// when the command cannot execute at that moment.
+	allowed.Set(false)
+	unbind()
+	if b.Disabled().Get() {
+		t.Fatal("unbind left the button Disabled")
+	}
+	if b.Style != toolkit.ButtonDefault {
+		t.Fatalf("unbind left Style=%v, want the original Default", b.Style)
+	}
+	pre := toolkit.NewButton("x", nil)
+	pre.Disabled().Set(true)
+	BindCommand(pre, mvvm.NewCommand(func() {}, nil), nil)()
+	if !pre.Disabled().Get() {
+		t.Fatal("unbind re-enabled a button that was Disabled before binding")
+	}
+}

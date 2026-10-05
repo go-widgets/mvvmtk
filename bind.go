@@ -241,25 +241,34 @@ func BindViews[T any](v *toolkit.ViewSwitcher, l *mvvm.ObservableList[T], projec
 // ── Command binding ─────────────────────────────────────────────────────────
 
 // BindCommand wires a Command to a Button: it composes Execute into the
-// button's OnClick and reflects executability by greying the button — swapping
-// its Style to ButtonSecondary when the command cannot execute and restoring
-// the original Style when it can (a Button has no boolean "disabled" field, so
-// this backend-specific greying is how CanExecute surfaces). invalidate (may be
-// nil) requests a repaint on each executability change. The returned unbind
-// restores the prior OnClick and detaches.
+// button's OnClick and binds the button's Disabled state to !CanExecute, so a
+// button whose command cannot run neither fires on a click or Enter nor takes
+// keyboard focus (the toolkit's focus walk skips disabled widgets). It also
+// keeps the greying it has always applied -- the Style swaps to
+// ButtonSecondary while the command cannot execute and back to the original
+// Style when it can -- so a bound button looks exactly as before. invalidate
+// (may be nil) requests a repaint on each executability change. The returned
+// unbind restores the prior OnClick, Style and Disabled state and detaches.
 func BindCommand(b *toolkit.Button, c *mvvm.Command, invalidate func()) (unbind func()) {
 	orig := b.Style
+	origDisabled := b.Disabled().Get()
 	setEnabled := func(enabled bool) {
 		if enabled {
 			b.Style = orig
 		} else {
 			b.Style = toolkit.ButtonSecondary
 		}
+		b.Disabled().Set(!enabled)
 		if invalidate != nil {
 			invalidate()
 		}
 	}
-	return mvvm.BindCommand(c, &b.OnClick, setEnabled)
+	detach := mvvm.BindCommand(c, &b.OnClick, setEnabled)
+	return func() {
+		detach()
+		b.Style = orig
+		b.Disabled().Set(origDisabled)
+	}
 }
 
 // ── Tree binding (ObservableList → TreeTable forest) ────────────────────────
