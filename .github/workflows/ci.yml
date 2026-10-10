@@ -35,7 +35,20 @@ jobs:
           go-version-file: ${{ matrix.module }}/go.mod
           cache: true
       - run: go vet ./...
-      - run: go test -count=1 ./...
+      - name: test, with coverage
+        run: go test -count=1 -covermode=set -coverprofile=coverage.out ./...
+      # Every sibling module gates at 100% and this one had no gate at all,
+      # though it stood at 100.0% when the gate was added (2026-10-10). Exact,
+      # no rounding: any function or the total below 100.0% fails.
+      - name: assert 100% statement coverage
+        run: |
+          go tool cover -func=coverage.out
+          below=$(go tool cover -func=coverage.out | awk '$NF != "100.0%"')
+          if [ -n "$below" ]; then
+            echo "::error::coverage below 100% on:"
+            echo "$below"
+            exit 1
+          fi
 
   race:
     runs-on: ubuntu-latest
@@ -70,6 +83,13 @@ jobs:
           - netbsd
           - windows
         goarch: [amd64, arm64]
+        # The other four 64-bit Linux architectures the fleet ships on, s390x
+        # among them for its big-endian byte order. Cross-built locally first.
+        include:
+          - { module: ., goos: linux, goarch: riscv64 }
+          - { module: ., goos: linux, goarch: loong64 }
+          - { module: ., goos: linux, goarch: ppc64le }
+          - { module: ., goos: linux, goarch: s390x }
     defaults:
       run:
         working-directory: ${{ matrix.module }}
