@@ -9,11 +9,13 @@ Binding glue between [`go-widgets/mvvm`](https://github.com/go-widgets/mvvm)
 
 ## Why a separate module
 
-`mvvm` is deliberately toolkit-agnostic: it binds through a pointer to a
-widget's value field and a pointer to its callback slot, and never imports any
-widget package. `toolkit`, in turn, never imports `mvvm`. `mvvmtk` is the one
-module that knows **both**, so an app wires a ViewModel to a widget in a single
-call and never touches widget state fields directly.
+`mvvm`'s core package is deliberately toolkit-agnostic: it binds through a
+pointer to a widget's value field and a pointer to its callback slot, and
+imports no widget package. `toolkit` does import that core (since v0.124.0:
+its widgets expose state as `mvvm.Observable`s), but not the binders, which
+would be a cycle. `mvvmtk` is the module that knows **both**, so an app wires
+a ViewModel to a widget in a single call and never touches widget state fields
+directly.
 
 ```go
 unbind := mvvmtk.BindText(entry, vm.Query, win.Invalidate) // entry.Text ⇄ vm.Query
