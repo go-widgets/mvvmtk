@@ -41,6 +41,7 @@ field and callback names filled in — no business logic. Every helper returns a
 | `BindLabel(*Label, *Observable[string], invalidate)` | `Text` | one-way |
 | `BindProgress(*ProgressBar, *Observable[float64], invalidate)` | `Fraction` | one-way |
 | `BindListItems[T](*ListBox, *ObservableList[T], project, invalidate)` | `Items` | list → widget |
+| `BindTableRows[T](*Table, *ObservableList[T], project, invalidate)` | `Rows` | list → widget |
 | `BindDropDownOptions[T](*DropDown, *ObservableList[T], project, invalidate)` | `Options` | list → widget |
 | `BindViews[T](*ViewSwitcher, *ObservableList[T], project, invalidate)` | `Views` | list → widget |
 | `BindCommand(*Button, *Command, invalidate)` | `OnClick` + `Disabled` + `Style` greying | command |

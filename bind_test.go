@@ -239,6 +239,43 @@ func TestBindListItems(t *testing.T) {
 	}
 }
 
+// TestBindTableRows covers projecting an ObservableList into Table.Rows:
+// seeded, rebuilt on change with invalidate, no invalidate (nil), and unbind.
+func TestBindTableRows(t *testing.T) {
+	l := mvvm.NewObservableList("a", "b")
+	tb := toolkit.NewTable([]toolkit.TableColumn{{Title: "x"}, {Title: "y"}}, nil)
+	c := &counter{}
+	project := func(s string) []string { return []string{s, s + s} }
+	unbind := BindTableRows(tb, l, project, c.inc)
+
+	if len(tb.Rows) != 2 || tb.Rows[1][1] != "bb" || c.n != 1 {
+		t.Fatalf("seed: rows=%v n=%d", tb.Rows, c.n)
+	}
+	l.Append("c")
+	if len(tb.Rows) != 3 || tb.Rows[2][0] != "c" || c.n != 2 {
+		t.Fatalf("append: rows=%v n=%d", tb.Rows, c.n)
+	}
+	l.Clear()
+	if len(tb.Rows) != 0 {
+		t.Fatalf("clear: rows=%v", tb.Rows)
+	}
+	unbind()
+	l.Append("d")
+	if len(tb.Rows) != 0 {
+		t.Fatalf("after unbind rows rebuilt: %v", tb.Rows)
+	}
+
+	tb2 := toolkit.NewTable(nil, nil)
+	defer BindTableRows(tb2, l, project, nil)()
+	if len(tb2.Rows) != 1 {
+		t.Fatalf("nil invalidate: rows=%v", tb2.Rows)
+	}
+	l.Append("e")
+	if len(tb2.Rows) != 2 {
+		t.Fatalf("nil invalidate follow: rows=%v", tb2.Rows)
+	}
+}
+
 // TestBindDropDownOptions covers projecting a list into DropDown.Options.
 func TestBindDropDownOptions(t *testing.T) {
 	l := mvvm.NewObservableList("a")
