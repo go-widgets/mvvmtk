@@ -226,6 +226,29 @@ func BindListItems[T any](lb *toolkit.ListBox, l *mvvm.ObservableList[T], projec
 	return mvvm.BindList(l, &lb.Items, project, invalidate)
 }
 
+// BindTableRows binds an ObservableList to a Table's Rows (field Table.Rows),
+// projecting each element to its row of cell strings. The rows are seeded now,
+// rebuilt on every list change, and invalidate (may be nil) fires after each
+// rebuild. A Table does not reorder or edit Rows itself unless SelfSort,
+// Reorderable or an Editable column is on, so with those off the list is the
+// single source of truth.
+func BindTableRows[T any](t *toolkit.Table, l *mvvm.ObservableList[T], project func(T) []string, invalidate func()) (unbind func()) {
+	rows := &t.Rows
+	sync := func() {
+		items := l.Slice()
+		out := make([][]string, len(items))
+		for i, it := range items {
+			out[i] = project(it)
+		}
+		*rows = out
+		if invalidate != nil {
+			invalidate()
+		}
+	}
+	sync()
+	return l.SubscribeChanged(sync)
+}
+
 // BindDropDownOptions binds an ObservableList to a DropDown's Options slice
 // (field DropDown.Options), projecting each element to its option string.
 func BindDropDownOptions[T any](d *toolkit.DropDown, l *mvvm.ObservableList[T], project func(T) string, invalidate func()) (unbind func()) {
